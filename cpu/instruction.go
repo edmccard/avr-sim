@@ -1,9 +1,9 @@
 package cpu
 
-type Instruction int
+type InstType int
 
 const (
-	Adc Instruction = iota
+	Adc InstType = iota
 	Add
 	Adiw
 	And
@@ -85,4 +85,9 @@ const (
 	Illegal
 )
 
-//go:generate stringer -type=Instruction
+//go:generate stringer -type=InstType
+
+type Instruction struct {
+	itype    InstType
+	op1, op2 Opcode
+}

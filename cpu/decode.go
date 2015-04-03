@@ -1,5 +1,7 @@
 package cpu
 
+// NOTE: No ATtiny10
+
 type Opcode uint16
 
 func (o Opcode) Nibble3() Opcode {
@@ -18,7 +20,7 @@ func (o Opcode) Nibble0() Opcode {
 	return o & 0xf
 }
 
-func Decode(opcode Opcode) Instruction {
+func Decode(opcode Opcode) InstType {
 	opNibble3 := opcode.Nibble3()
 	opNibble2 := opcode.Nibble2()
 	opNibble1 := opcode.Nibble1()
