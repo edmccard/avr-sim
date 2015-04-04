@@ -73,7 +73,8 @@ func TestDecode(t *testing.T) {
 		0xfe08, 0xfc00, 256, // Sbrc
 		0xfe08, 0xfe00, 256, // Sbrs
 		0xffff, 0x9588, 1, // Sleep
-		0x0000, 0x0000, 2, // Spm
+		0xffff, 0x95e8, 1, // Spm
+		0xffff, 0x95f8, 1, // Spm2
 		0x0000, 0x0000, 288, // St
 		0x0000, 0x0000, 4032, // Std
 		0xfe0f, 0x9200, 32, // Sts
@@ -109,8 +110,6 @@ func TestDecode(t *testing.T) {
 		case Lpm:
 			masked := uint16(o) & 0xfe0f
 			ok = o == 0x95c8 || masked == 0x9004 || masked == 0x9005
-		case Spm:
-			ok = o == 0x95e8 || o == 0x95f8
 		case St:
 			switch uint16(o) & 0xfe0f {
 			case 0x8200, 0x8208:

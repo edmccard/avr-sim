@@ -73,6 +73,7 @@ const (
 	Sbrs
 	Sleep
 	Spm
+	Spm2
 	St
 	Std
 	Sts

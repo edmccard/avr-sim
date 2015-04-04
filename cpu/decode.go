@@ -194,8 +194,10 @@ func Decode(opcode Opcode) InstType {
 						return Lpm
 					case 0xd:
 						return Elpm
-					case 0xe, 0xf:
+					case 0xe:
 						return Spm
+					case 0xf:
+						return Spm2
 					default:
 						return Reserved
 					}
