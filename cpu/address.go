@@ -183,3 +183,10 @@ func Reg5Reg5(inst Instruction) AddrMode {
 	d := (inst.op1 & 0x1f0) >> 4
 	return AddrMode{Addr(ra | rb), Addr(d), 0}
 }
+
+// Regpair extracts r*2,d*2 from ________ddddrrrr.
+func Regpair(inst Instruction) AddrMode {
+	r := (inst.op1 & 0xf)
+	d := (inst.op1 & 0xf0) >> 4
+	return AddrMode{Addr(r*2), Addr(d*2), 0}
+}

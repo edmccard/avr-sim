@@ -225,3 +225,13 @@ func TestReg5Reg5(t *testing.T) {
 		}
 	}
 }
+
+func TestRegpair(t *testing.T) {
+	for r := 0; r < 32; r += 2 {
+		for d := 0; d < 32; d += 2 {
+			e := AddrMode{Addr(r), Addr(d), 0}
+			op := ((d >> 1) << 4) | (r >> 1)
+			checkInst(t, Regpair, "Regpair", Opcode(op), 0xff00, e)
+		}
+	}
+}
