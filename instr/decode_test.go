@@ -142,3 +142,16 @@ func TestDecodeMnem(t *testing.T) {
 		}
 	}
 }
+
+var result Mnemonic
+
+func BenchmarkDecodeMnem(b *testing.B) {
+	s := Classic128K{}
+	var r Mnemonic
+	for n := 0; n < b.N; n++ {
+		for o := 0; o < 0x10000; o++ {
+			r = s.DecodeMnem(Opcode(o))
+		}
+	}
+	result = r
+}
