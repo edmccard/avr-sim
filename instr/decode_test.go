@@ -143,19 +143,6 @@ func TestDecodeMnem(t *testing.T) {
 	}
 }
 
-var result Mnemonic
-
-func BenchmarkDecodeMnem(b *testing.B) {
-	s := Classic128K{}
-	var r Mnemonic
-	for n := 0; n < b.N; n++ {
-		for o := 0; o < 0x10000; o++ {
-			r = s.DecodeMnem(Opcode(o))
-		}
-	}
-	result = r
-}
-
 var amodes = []struct {
 	mask uint16
 	mn   []Mnemonic
@@ -413,4 +400,29 @@ func TestDecodeAddr(t *testing.T) {
 			amode.gen(t, amode.mask, mnem)
 		}
 	}
+}
+
+var result int
+
+func BenchmarkDecodeMnem(b *testing.B) {
+	s := Classic128K{}
+	var r Mnemonic
+	for n := 0; n < b.N; n++ {
+		for o := 0; o < 0x10000; o++ {
+			r = s.DecodeMnem(Opcode(o))
+		}
+	}
+	result = int(r)
+}
+
+func BenchmarkDecodeAddr(b *testing.B) {
+	s := Classic128K{}
+	var am AddrMode
+	for n := 0; n < b.N; n++ {
+		for o := 0; o < 0x10000; o++ {
+			op := Opcode(o)
+			am = s.DecodeAddr(Instruction{op, 0, s.DecodeMnem(op)})
+		}
+	}
+	result = int(am.A1)
 }
