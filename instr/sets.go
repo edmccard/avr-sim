@@ -2,6 +2,7 @@ package instr
 
 type Set interface {
 	DecodeMnem(Opcode) Mnemonic
+	DecodeAddr(Instruction) AddrMode
 	String() string
 }
 
