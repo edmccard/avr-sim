@@ -105,7 +105,7 @@ func TestDecodeMnem(t *testing.T) {
 		counts := make([]int, Reserved)
 
 		for o := 0; o < 0x10000; o++ {
-			mnem := levels[lvl].DecodeMnem(Opcode(o))
+			mnem, _ := levels[lvl].DecodeMnem(Opcode(o))
 			if mnem == Reserved {
 				continue
 			}
@@ -409,7 +409,7 @@ func BenchmarkDecodeMnem(b *testing.B) {
 	var r Mnemonic
 	for n := 0; n < b.N; n++ {
 		for o := 0; o < 0x10000; o++ {
-			r = s.DecodeMnem(Opcode(o))
+			r, _ = s.DecodeMnem(Opcode(o))
 		}
 	}
 	result = int(r)
@@ -421,7 +421,8 @@ func BenchmarkDecodeAddr(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		for o := 0; o < 0x10000; o++ {
 			op := Opcode(o)
-			am = s.DecodeAddr(Instruction{op, 0, s.DecodeMnem(op)})
+			mnem, _ := s.DecodeMnem(op)
+			am = s.DecodeAddr(Instruction{op, 0, mnem})
 		}
 	}
 	result = int(am.A1)

@@ -1,16 +1,18 @@
 package instr
 
-func (s Minimal) DecodeMnem(op Opcode) Mnemonic {
+func (s Minimal) DecodeMnem(op Opcode) (mnem Mnemonic, opLen int) {
+	opLen = 1
 	switch {
 	case op < 0x8000:
-		return s.DecodeMnem0000x7fff(op)
+		mnem = s.DecodeMnem0000x7fff(op)
 	case op >= 0xb000:
-		return s.DecodeMnemb000xffff(op)
+		mnem = s.DecodeMnemb000xffff(op)
 	case op < 0x9000 || op >= 0xa000:
-		return s.DecodeMnemLddStd(op)
+		mnem = s.DecodeMnemLddStd(op)
 	default:
-		return s.DecodeMnem9000x9fff(op)
+		mnem = s.DecodeMnem9000x9fff(op)
 	}
+	return
 }
 
 var mn0000x7fff = []Mnemonic{
@@ -118,17 +120,22 @@ func (s Minimal) DecodeMnem9000x9fff(op Opcode) Mnemonic {
 	}
 }
 
-func (s Classic8K) DecodeMnem(op Opcode) Mnemonic {
+func (s Classic8K) DecodeMnem(op Opcode) (mnem Mnemonic, opLen int) {
+	opLen = 1
 	switch {
 	case op < 0x8000:
-		return s.DecodeMnem0000x7fff(op)
+		mnem = s.DecodeMnem0000x7fff(op)
 	case op >= 0xb000:
-		return s.DecodeMnemb000xffff(op)
+		mnem = s.DecodeMnemb000xffff(op)
 	case op < 0x9000 || op >= 0xa000:
-		return s.DecodeMnemLddStd(op)
+		mnem = s.DecodeMnemLddStd(op)
+		if mnem == Lds || mnem == Sts {
+			opLen = 2
+		}
 	default:
-		return s.DecodeMnem9000x9fff(op)
+		mnem = s.DecodeMnem9000x9fff(op)
 	}
+	return
 }
 
 func (s Classic8K) DecodeMnemLddStd(op Opcode) Mnemonic {
@@ -200,17 +207,22 @@ func (s Classic8K) DecodeMnem9000x9fff(op Opcode) Mnemonic {
 	}
 }
 
-func (s Classic128K) DecodeMnem(op Opcode) Mnemonic {
+func (s Classic128K) DecodeMnem(op Opcode) (mnem Mnemonic, opLen int) {
+	opLen = 1
 	switch {
 	case op < 0x8000:
-		return s.DecodeMnem0000x7fff(op)
+		mnem = s.DecodeMnem0000x7fff(op)
 	case op >= 0xb000:
-		return s.DecodeMnemb000xffff(op)
+		mnem = s.DecodeMnemb000xffff(op)
 	case op < 0x9000 || op >= 0xa000:
-		return s.DecodeMnemLddStd(op)
+		mnem = s.DecodeMnemLddStd(op)
+		if mnem == Jmp || mnem == Call || mnem == Lds || mnem == Sts {
+			opLen = 2
+		}
 	default:
-		return s.DecodeMnem9000x9fff(op)
+		mnem = s.DecodeMnem9000x9fff(op)
 	}
+	return
 }
 
 func (s Classic128K) DecodeMnem9000x9fff(op Opcode) Mnemonic {
@@ -238,17 +250,22 @@ func (s Classic128K) DecodeMnem9000x9fff(op Opcode) Mnemonic {
 	}
 }
 
-func (s Enhanced8K) DecodeMnem(op Opcode) Mnemonic {
+func (s Enhanced8K) DecodeMnem(op Opcode) (mnem Mnemonic, opLen int) {
+	opLen = 1
 	switch {
 	case op < 0x8000:
-		return s.DecodeMnem0000x7fff(op)
+		mnem = s.DecodeMnem0000x7fff(op)
 	case op >= 0xb000:
-		return s.DecodeMnemb000xffff(op)
+		mnem = s.DecodeMnemb000xffff(op)
 	case op < 0x9000 || op >= 0xa000:
-		return s.DecodeMnemLddStd(op)
+		mnem = s.DecodeMnemLddStd(op)
+		if mnem == Jmp || mnem == Call || mnem == Lds || mnem == Sts {
+			opLen = 2
+		}
 	default:
-		return s.DecodeMnem9000x9fff(op)
+		mnem = s.DecodeMnem9000x9fff(op)
 	}
+	return
 }
 
 func (s Enhanced8K) DecodeMnem0000x7fff(op Opcode) Mnemonic {
@@ -299,17 +316,22 @@ func (s Enhanced8K) DecodeMnem9000x9fff(op Opcode) Mnemonic {
 	}
 }
 
-func (s Enhanced128K) DecodeMnem(op Opcode) Mnemonic {
+func (s Enhanced128K) DecodeMnem(op Opcode) (mnem Mnemonic, opLen int) {
+	opLen = 1
 	switch {
 	case op < 0x8000:
-		return s.DecodeMnem0000x7fff(op)
+		mnem = s.DecodeMnem0000x7fff(op)
 	case op >= 0xb000:
-		return s.DecodeMnemb000xffff(op)
+		mnem = s.DecodeMnemb000xffff(op)
 	case op < 0x9000 || op >= 0xa000:
-		return s.DecodeMnemLddStd(op)
+		mnem = s.DecodeMnemLddStd(op)
+		if mnem == Jmp || mnem == Call || mnem == Lds || mnem == Sts {
+			opLen = 2
+		}
 	default:
-		return s.DecodeMnem9000x9fff(op)
+		mnem = s.DecodeMnem9000x9fff(op)
 	}
+	return
 }
 
 func (s Enhanced128K) DecodeMnem9000x9fff(op Opcode) Mnemonic {
@@ -324,17 +346,22 @@ func (s Enhanced128K) DecodeMnem9000x9fff(op Opcode) Mnemonic {
 	}
 }
 
-func (s Enhanced4M) DecodeMnem(op Opcode) Mnemonic {
+func (s Enhanced4M) DecodeMnem(op Opcode) (mnem Mnemonic, opLen int) {
+	opLen = 1
 	switch {
 	case op < 0x8000:
-		return s.DecodeMnem0000x7fff(op)
+		mnem = s.DecodeMnem0000x7fff(op)
 	case op >= 0xb000:
-		return s.DecodeMnemb000xffff(op)
+		mnem = s.DecodeMnemb000xffff(op)
 	case op < 0x9000 || op >= 0xa000:
-		return s.DecodeMnemLddStd(op)
+		mnem = s.DecodeMnemLddStd(op)
+		if mnem == Jmp || mnem == Call || mnem == Lds || mnem == Sts {
+			opLen = 2
+		}
 	default:
-		return s.DecodeMnem9000x9fff(op)
+		mnem = s.DecodeMnem9000x9fff(op)
 	}
+	return
 }
 
 func (s Enhanced4M) DecodeMnem9000x9fff(op Opcode) Mnemonic {
@@ -352,17 +379,22 @@ func (s Enhanced4M) DecodeMnem9000x9fff(op Opcode) Mnemonic {
 	}
 }
 
-func (s Xmega) DecodeMnem(op Opcode) Mnemonic {
+func (s Xmega) DecodeMnem(op Opcode) (mnem Mnemonic, opLen int) {
+	opLen = 1
 	switch {
 	case op < 0x8000:
-		return s.DecodeMnem0000x7fff(op)
+		mnem = s.DecodeMnem0000x7fff(op)
 	case op >= 0xb000:
-		return s.DecodeMnemb000xffff(op)
+		mnem = s.DecodeMnemb000xffff(op)
 	case op < 0x9000 || op >= 0xa000:
-		return s.DecodeMnemLddStd(op)
+		mnem = s.DecodeMnemLddStd(op)
+		if mnem == Jmp || mnem == Call || mnem == Lds || mnem == Sts {
+			opLen = 2
+		}
 	default:
-		return s.DecodeMnem9000x9fff(op)
+		mnem = s.DecodeMnem9000x9fff(op)
 	}
+	return
 }
 
 func (s Xmega) DecodeMnem9000x9fff(op Opcode) Mnemonic {
