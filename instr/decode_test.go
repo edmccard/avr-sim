@@ -3,98 +3,345 @@ package instr
 import "testing"
 
 var mnems = map[Mnemonic][]struct {
-	mask, fixed     uint16
-	count, minLevel int
+	minLevel, count int
+	opCheck         func(Opcode) bool
 }{
-	Adc:    {{0xfc00, 0x1c00, 1024, 0}},
-	Add:    {{0xfc00, 0x0c00, 1024, 0}},
-	Adiw:   {{0xff00, 0x9600, 256, 1}},
-	And:    {{0xfc00, 0x2000, 1024, 0}},
-	Andi:   {{0xf000, 0x7000, 4096, 0}},
-	Asr:    {{0xfe0f, 0x9405, 32, 0}},
-	Bclr:   {{0xff8f, 0x9488, 8, 0}},
-	Bld:    {{0xfe08, 0xf800, 256, 0}},
-	Brbc:   {{0xfc00, 0xf400, 1024, 0}},
-	Brbs:   {{0xfc00, 0xf000, 1024, 0}},
-	Break:  {{0xffff, 0x9598, 1, 4}},
-	Bset:   {{0xff8f, 0x9408, 8, 0}},
-	Bst:    {{0xfe08, 0xfa00, 256, 0}},
-	Call:   {{0xfe0e, 0x940e, 64, 2}},
-	Cbi:    {{0xff00, 0x9800, 256, 0}},
-	Com:    {{0xfe0f, 0x9400, 32, 0}},
-	Cp:     {{0xfc00, 0x1400, 1024, 0}},
-	Cpc:    {{0xfc00, 0x0400, 1024, 0}},
-	Cpi:    {{0xf000, 0x3000, 4096, 0}},
-	Cpse:   {{0xfc00, 0x1000, 1024, 0}},
-	Dec:    {{0xfe0f, 0x940a, 32, 0}},
-	Des:    {{0xff0f, 0x940b, 16, 6}},
-	Eicall: {{0xffff, 0x9519, 1, 5}},
-	Eijmp:  {{0xffff, 0x9419, 1, 5}},
-	Elpm: {{0xffff, 0x95d8, 1, 2},
-		{0xfe0f, 0x9006, 32, 2}, {0xfe0f, 0x9007, 32, 2}},
-	Eor:    {{0xfc00, 0x2400, 1024, 0}},
-	Fmul:   {{0xff88, 0x0308, 64, 3}},
-	Fmuls:  {{0xff88, 0x0380, 64, 3}},
-	Fmulsu: {{0xff88, 0x0388, 64, 3}},
-	Icall:  {{0xffff, 0x9509, 1, 1}},
-	Ijmp:   {{0xffff, 0x9409, 1, 1}},
-	In:     {{0xf800, 0xb000, 2048, 0}},
-	Inc:    {{0xfe0f, 0x9403, 32, 0}},
-	Jmp:    {{0xfe0e, 0x940c, 64, 2}},
-	Lac:    {{0xfe0f, 0x9206, 32, 6}},
-	Las:    {{0xfe0f, 0x9205, 32, 6}},
-	Lat:    {{0xfe0f, 0x9207, 32, 6}},
-	Ld: {{0xfe0f, 0x8000, 32, 0},
-		{0xfe0f, 0x8008, 32, 1}, {0xfe0f, 0x9001, 32, 1},
-		{0xfe0f, 0x9002, 32, 1}, {0xfe0f, 0x9009, 32, 1},
-		{0xfe0f, 0x900a, 32, 1}, {0xfe0f, 0x900c, 32, 1},
-		{0xfe0d, 0x900d, 32, 1}, {0xfe0f, 0x900e, 32, 1}},
-	Ldd: {{0xd208, 0x8000, 1984, 1}, {0xd208, 0x8008, 2048, 1}},
-	Ldi: {{0xf000, 0xe000, 4096, 0}},
-	Lds: {{0xfe0f, 0x9000, 32, 1}},
-	Lpm: {{0xffff, 0x95c8, 1, 0},
-		{0xfe0f, 0x9004, 32, 3}, {0xfe0f, 0x9005, 32, 3}},
-	Lsr:   {{0xfe0f, 0x9406, 32, 0}},
-	Mov:   {{0xfc00, 0x2c00, 1024, 0}},
-	Movw:  {{0xff00, 0x0100, 256, 3}},
-	Mul:   {{0xfc00, 0x9c00, 1024, 3}},
-	Muls:  {{0xff00, 0x0200, 256, 3}},
-	Mulsu: {{0xff88, 0x0300, 64, 3}},
-	Neg:   {{0xfe0f, 0x9401, 32, 0}},
-	Nop:   {{0xffff, 0x0000, 1, 0}},
-	Or:    {{0xfc00, 0x2800, 1024, 0}},
-	Ori:   {{0xf000, 0x6000, 4096, 0}},
-	Out:   {{0xf800, 0xb800, 2048, 0}},
-	Pop:   {{0xfe0f, 0x900f, 32, 1}},
-	Push:  {{0xfe0f, 0x920f, 32, 1}},
-	Rcall: {{0xf000, 0xd000, 4096, 0}},
-	Ret:   {{0xffff, 0x9508, 1, 0}},
-	Reti:  {{0xffff, 0x9518, 1, 0}},
-	Rjmp:  {{0xf000, 0xc000, 4096, 0}},
-	Ror:   {{0xfe0f, 0x9407, 32, 0}},
-	Sbc:   {{0xfc00, 0x0800, 1024, 0}},
-	Sbci:  {{0xf000, 0x4000, 4096, 0}},
-	Sbi:   {{0xff00, 0x9a00, 256, 0}},
-	Sbic:  {{0xff00, 0x9900, 256, 0}},
-	Sbis:  {{0xff00, 0x9b00, 256, 0}},
-	Sbiw:  {{0xff00, 0x9700, 256, 1}},
-	Sbrc:  {{0xfe08, 0xfc00, 256, 0}},
-	Sbrs:  {{0xfe08, 0xfe00, 256, 0}},
-	Sleep: {{0xffff, 0x9588, 1, 0}},
-	Spm: {{0xffff, 0x95e8, 1, 3},
-		{0xffff, 0x95f8, 1, 6}},
-	St: {{0xfe0f, 0x8200, 32, 0},
-		{0xfe0f, 0x8208, 32, 1}, {0xfe0f, 0x9201, 32, 1},
-		{0xfe0f, 0x9202, 32, 1}, {0xfe0d, 0x9209, 32, 1},
-		{0xfe0f, 0x920c, 32, 1}, {0xfe0f, 0x920a, 32, 1},
-		{0xfe0f, 0x920d, 32, 1}, {0xfe0f, 0x920e, 32, 1}},
-	Std:  {{0xd208, 0x8200, 1984, 1}, {0xd208, 0x8208, 2048, 1}},
-	Sts:  {{0xfe0f, 0x9200, 32, 1}},
-	Sub:  {{0xfc00, 0x1800, 1024, 0}},
-	Subi: {{0xf000, 0x5000, 4096, 0}},
-	Swap: {{0xfe0f, 0x9402, 32, 0}},
-	Wdr:  {{0xffff, 0x95a8, 1, 0}},
-	Xch:  {{0xfe0f, 0x9204, 32, 6}},
+	Adc: {{0, 1024,
+		func(o Opcode) bool {
+			return o >= 0x1c00 && o < 0x2000
+		}}},
+	Add: {{0, 1024,
+		func(o Opcode) bool {
+			return o >= 0x0c00 && o < 0x1000
+		}}},
+	Adiw: {{1, 256,
+		func(o Opcode) bool {
+			return o >= 0x9600 && o < 0x9700
+		}}},
+	And: {{0, 1024,
+		func(o Opcode) bool {
+			return o >= 0x2000 && o < 0x2400
+		}}},
+	Andi: {{0, 4096,
+		func(o Opcode) bool {
+			return o >= 0x7000 && o < 0x8000
+		}}},
+	Asr: {{0, 32,
+		func(o Opcode) bool {
+			return o >= 0x9400 && o < 0x9600 && (o&0xf) == 5
+		}}},
+	Bclr: {{0, 8,
+		func(o Opcode) bool {
+			return o >= 0x9480 && o < 0x9500 && (o&0xf) == 8
+		}}},
+	Bld: {{0, 256,
+		func(o Opcode) bool {
+			return o >= 0xf800 && o < 0xfa00 && (o&0xf) < 8
+		}}},
+	Brbc: {{0, 1024,
+		func(o Opcode) bool {
+			return o >= 0xf400 && o < 0xf800
+		}}},
+	Brbs: {{0, 1024,
+		func(o Opcode) bool {
+			return o >= 0xf000 && o < 0xf400
+		}}},
+	Break: {{4, 1, func(o Opcode) bool { return o == 0x9598 }}},
+	Bset: {{0, 8,
+		func(o Opcode) bool {
+			return o >= 0x9400 && o < 0x9480 && (o&0xf) == 8
+		}}},
+	Bst: {{0, 256,
+		func(o Opcode) bool {
+			return o >= 0xfa00 && o < 0xfc00 && (o&0xf) < 8
+		}}},
+	Call: {{2, 64,
+		func(o Opcode) bool {
+			return o >= 0x9400 && o < 0x9600 && (o&0xf) > 0xd
+		}}},
+	Cbi: {{0, 256,
+		func(o Opcode) bool {
+			return o >= 0x9800 && o < 0x9900
+		}}},
+	Com: {{0, 32,
+		func(o Opcode) bool {
+			return o >= 0x9400 && o < 0x9600 && (o&0xf) == 0
+		}}},
+	Cp: {{0, 1024,
+		func(o Opcode) bool {
+			return o >= 0x1400 && o < 0x1800
+		}}},
+	Cpc: {{0, 1024,
+		func(o Opcode) bool {
+			return o >= 0x0400 && o < 0x0800
+		}}},
+	Cpi: {{0, 4096,
+		func(o Opcode) bool {
+			return o >= 0x3000 && o < 0x4000
+		}}},
+	Cpse: {{0, 1024,
+		func(o Opcode) bool {
+			return o >= 0x1000 && o < 0x1400
+		}}},
+	Dec: {{0, 32,
+		func(o Opcode) bool {
+			return o >= 0x9400 && o < 0x9600 && (o&0xf) == 0xa
+		}}},
+	Des: {{6, 16,
+		func(o Opcode) bool {
+			return o >= 0x9400 && o < 0x9500 && (o&0xf) == 0xb
+		}}},
+	Eicall: {{5, 1, func(o Opcode) bool { return o == 0x9519 }}},
+	Eijmp:  {{5, 1, func(o Opcode) bool { return o == 0x9419 }}},
+	Elpm: {{2, 65,
+		func(o Opcode) bool {
+			if o == 0x95d8 {
+				return true
+			}
+			return (o >= 0x9000 && o < 0x9200) &&
+				((o&0xf) == 6 || (o&0xf) == 7)
+		}}},
+	Eor: {{0, 1024,
+		func(o Opcode) bool {
+			return o >= 0x2400 && o < 0x2800
+		}}},
+	Fmul: {{3, 64,
+		func(o Opcode) bool {
+			return o >= 0x0300 && o < 0x0380 && (o&0xf) > 7
+		}}},
+	Fmuls: {{3, 64,
+		func(o Opcode) bool {
+			return o >= 0x380 && o < 0x400 && (o&0xf) < 8
+		}}},
+	Fmulsu: {{3, 64,
+		func(o Opcode) bool {
+			return o >= 0x380 && o < 0x400 && (o&0xf) > 7
+		}}},
+	Icall: {{1, 1, func(o Opcode) bool { return o == 0x9509 }}},
+	Ijmp:  {{1, 1, func(o Opcode) bool { return o == 0x9409 }}},
+	In: {{0, 2048,
+		func(o Opcode) bool {
+			return o >= 0xb000 && o < 0xb800
+		}}},
+	Inc: {{0, 32,
+		func(o Opcode) bool {
+			return o >= 0x9400 && o < 0x9600 && (o&0xf) == 3
+		}}},
+	Jmp: {{2, 64,
+		func(o Opcode) bool {
+			return o >= 0x9400 && o < 0x9600 &&
+				((o&0xf) == 0xc || (o&0xf) == 0xd)
+		}}},
+	Lac: {{6, 32,
+		func(o Opcode) bool {
+			return o >= 0x9200 && o < 0x9400 && (o&0xf) == 6
+		}}},
+	Las: {{6, 32,
+		func(o Opcode) bool {
+			return o >= 0x9200 && o < 0x9400 && (o&0xf) == 5
+		}}},
+	Lat: {{6, 32,
+		func(o Opcode) bool {
+			return o >= 0x9200 && o < 0x9400 && (o&0xf) == 7
+		}}},
+	Ld: {
+		{0, 32,
+			func(o Opcode) bool {
+				return o >= 0x8000 && o < 0x8200 && (o&0xf) == 0
+			}},
+		{1, 256,
+			func(o Opcode) bool {
+				on0 := o.Nibble0()
+				switch {
+				case o >= 0x8000 && o < 0x8200:
+					return on0 == 8
+				case o >= 0x9000 && o < 0x9200:
+					return on0 == 1 || on0 == 2 || on0 == 9 || on0 == 0xa ||
+						on0 == 0xc || on0 == 0xd || on0 == 0xe
+				default:
+					return false
+				}
+			}}},
+	Ldd: {{1, 4032,
+		func(o Opcode) bool {
+			if o < 0x8000 || o >= 0xb000 {
+				return false
+			}
+			if ((o.Nibble2() >> 1) & 0x1) == 1 {
+				return false
+			}
+			if o < 0x8200 && (o.Nibble0() == 0 || o.Nibble0() == 8) {
+				return false
+			}
+			return true
+		}}},
+	Ldi: {{0, 4096,
+		func(o Opcode) bool {
+			return o >= 0xe000 && o < 0xf000
+		}}},
+	Lds: {{1, 32,
+		func(o Opcode) bool {
+			return o >= 0x9000 && o < 0x9200 && o.Nibble0() == 0
+		}}},
+	Lpm: {
+		{0, 1,
+			func(o Opcode) bool { return o == 0x95c8 }},
+		{3, 64,
+			func(o Opcode) bool {
+				return o >= 0x9000 && o < 0x9200 &&
+					(o.Nibble0() == 4 || o.Nibble0() == 5)
+			}}},
+	Lsr: {{0, 32,
+		func(o Opcode) bool {
+			return o >= 0x9400 && o < 0x9600 && o.Nibble0() == 6
+		}}},
+	Mov: {{0, 1024,
+		func(o Opcode) bool {
+			return o >= 0x2c00 && o < 0x3000
+		}}},
+	Movw: {{3, 256,
+		func(o Opcode) bool {
+			return o >= 0x0100 && o < 0x0200
+		}}},
+	Mul: {{3, 1024,
+		func(o Opcode) bool {
+			return o >= 0x9c00 && o < 0xa000
+		}}},
+	Muls: {{3, 256,
+		func(o Opcode) bool {
+			return o >= 0x0200 && o < 0x0300
+		}}},
+	Mulsu: {{3, 64,
+		func(o Opcode) bool {
+			return o >= 0x0300 && o < 0x0380 && o.Nibble0() < 8
+		}}},
+	Neg: {{0, 32,
+		func(o Opcode) bool {
+			return o >= 0x9400 && o < 0x9600 && o.Nibble0() == 1
+		}}},
+	Nop: {{0, 1, func(o Opcode) bool { return o == 0x0000 }}},
+	Or: {{0, 1024,
+		func(o Opcode) bool {
+			return o >= 0x2800 && o < 0x2c00
+		}}},
+	Ori: {{0, 4096,
+		func(o Opcode) bool {
+			return o >= 0x6000 && o < 0x7000
+		}}},
+	Out: {{0, 2048,
+		func(o Opcode) bool {
+			return o >= 0xb800 && o < 0xc000
+		}}},
+	Pop: {{1, 32,
+		func(o Opcode) bool {
+			return o >= 0x9000 && o < 0x9200 && o.Nibble0() == 0xf
+		}}},
+	Push: {{1, 32,
+		func(o Opcode) bool {
+			return o >= 0x9200 && o < 0x9400 && o.Nibble0() == 0xf
+		}}},
+	Rcall: {{0, 4096,
+		func(o Opcode) bool {
+			return o >= 0xd000 && o < 0xe000
+		}}},
+	Ret:  {{0, 1, func(o Opcode) bool { return o == 0x9508 }}},
+	Reti: {{0, 1, func(o Opcode) bool { return o == 0x9518 }}},
+	Rjmp: {{0, 4096,
+		func(o Opcode) bool {
+			return o >= 0xc000 && o < 0xd000
+		}}},
+	Ror: {{0, 32,
+		func(o Opcode) bool {
+			return o >= 0x9400 && o < 0x9600 && o.Nibble0() == 7
+		}}},
+	Sbc: {{0, 1024,
+		func(o Opcode) bool {
+			return o >= 0x0800 && o < 0x0c00
+		}}},
+	Sbci: {{0, 4096,
+		func(o Opcode) bool {
+			return o >= 0x4000 && o < 0x5000
+		}}},
+	Sbi: {{0, 256,
+		func(o Opcode) bool {
+			return o >= 0x9a00 && o < 0x9b00
+		}}},
+	Sbic: {{0, 256,
+		func(o Opcode) bool {
+			return o >= 0x9900 && o < 0x9a00
+		}}},
+	Sbis: {{0, 256,
+		func(o Opcode) bool {
+			return o >= 0x9b00 && o < 0x9c00
+		}}},
+	Sbiw: {{1, 256,
+		func(o Opcode) bool {
+			return o >= 0x9700 && o < 0x9800
+		}}},
+	Sbrc: {{0, 256,
+		func(o Opcode) bool {
+			return o >= 0xfc00 && o < 0xfe00 && o.Nibble0() < 8
+		}}},
+	Sbrs: {{0, 256,
+		func(o Opcode) bool {
+			return o >= 0xfe00 && o.Nibble0() < 8
+		}}},
+	Sleep: {{0, 1, func(o Opcode) bool { return o == 0x9588 }}},
+	Spm: {
+		{3, 1, func(o Opcode) bool { return o == 0x95e8 }},
+		{6, 1, func(o Opcode) bool { return o == 0x95f8 }}},
+	St: {
+		{0, 32,
+			func(o Opcode) bool {
+				return o >= 0x8200 && o < 0x8400 && o.Nibble0() == 0
+			}},
+		{1, 256,
+			func(o Opcode) bool {
+				on0 := o.Nibble0()
+				switch {
+				case o >= 0x8200 && o < 0x8400:
+					return on0 == 8
+				case o >= 0x9200 && o < 0x9400:
+					return on0 == 1 || on0 == 2 || on0 == 9 || on0 == 0xa ||
+						on0 == 0xc || on0 == 0xd || on0 == 0xe
+				default:
+					return false
+				}
+			}}},
+	Std: {{1, 4032,
+		func(o Opcode) bool {
+			if o < 0x8000 || o >= 0xb000 {
+				return false
+			}
+			if ((o.Nibble2() >> 1) & 0x1) == 0 {
+				return false
+			}
+			if o < 0x8400 && (o.Nibble0() == 0 || o.Nibble0() == 8) {
+				return false
+			}
+			return true
+		}}},
+	Sts: {{1, 32,
+		func(o Opcode) bool {
+			return o >= 0x9200 && o < 0x9400 && o.Nibble0() == 0
+		}}},
+	Sub: {{0, 1024,
+		func(o Opcode) bool {
+			return o >= 0x1800 && o < 0x1c00
+		}}},
+	Subi: {{0, 4096,
+		func(o Opcode) bool {
+			return o >= 0x5000 && o < 0x6000
+		}}},
+	Swap: {{0, 32,
+		func(o Opcode) bool {
+			return o >= 0x9400 && o < 0x9600 && o.Nibble0() == 2
+		}}},
+	Wdr: {{0, 1, func(o Opcode) bool { return o == 0x95a8 }}},
+	Xch: {{6, 32,
+		func(o Opcode) bool {
+			return o >= 0x9200 && o < 0x9400 && o.Nibble0() == 4
+		}}},
 }
 
 func TestDecodeMnem(t *testing.T) {
@@ -104,25 +351,27 @@ func TestDecodeMnem(t *testing.T) {
 	for lvl := 0; lvl < len(levels); lvl++ {
 		counts := make([]int, Reserved)
 
-		for o := 0; o < 0x10000; o++ {
-			mnem, _ := levels[lvl].DecodeMnem(Opcode(o))
+		for op := 0; op < 0x10000; op++ {
+			mnem, _ := levels[lvl].DecodeMnem(Opcode(op))
 			if mnem == Reserved {
 				continue
 			}
-			cases, mok := mnems[mnem]
-			if !mok {
+			opMnemByLevel, ok := mnems[mnem]
+			if !ok {
+				continue
 				// t.Errorf("%s - unexpected %s", levels[lvl], mnem)
 			}
-			ook := false
-			for _, wanted := range cases {
-				if wanted.minLevel <= lvl {
-					if (uint16(o) & wanted.mask) == wanted.fixed {
-						ook = true
+			found := false
+			for _, opMnem := range opMnemByLevel {
+				if opMnem.minLevel <= lvl {
+					if opMnem.opCheck(Opcode(op)) {
+						found = true
+						break
 					}
 				}
 			}
-			if !ook {
-				t.Errorf("%s - %s(%x)", levels[lvl], mnem, o)
+			if !found {
+				t.Errorf("%s - %s(%x)", levels[lvl], mnem, op)
 			} else {
 				counts[mnem] += 1
 			}
@@ -381,7 +630,7 @@ func testAD(t *testing.T, mn Mnemonic, op int, mask uint16, exp AddrMode) {
 	inst := Instruction{Opcode(op), 0, mn}
 	got := s.DecodeAddr(inst)
 	if got != exp {
-		t.Errorf("%s:%s %v not %v", mn, mode, got, exp)
+		t.Errorf("%s:%s (0 mask) %v not %v", mn, mode, got, exp)
 	}
 	if mask == 0 {
 		return
@@ -390,7 +639,7 @@ func testAD(t *testing.T, mn Mnemonic, op int, mask uint16, exp AddrMode) {
 	inst = Instruction{Opcode(op) | Opcode(mask), 0, mn}
 	got = s.DecodeAddr(inst)
 	if got != exp {
-		t.Errorf("%s:%s %v not %v", mn, mode, got, exp)
+		t.Errorf("%s:%s (1 mask) %v not %v", mn, mode, got, exp)
 	}
 }
 
