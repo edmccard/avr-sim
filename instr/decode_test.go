@@ -2,6 +2,13 @@ package instr
 
 import "testing"
 
+// Mnemonic Tests
+// --------------
+// Each value from 0-ffff is decoded and, if not reserved, tested by a
+// mnemonic-specific verifier function. Distinguishing between
+// reserved and non-reserved values is indirectly tested by checking
+// the counts of non-reserved opcodes.
+
 var mnems = map[Mnemonic][]struct {
 	minLevel, count int
 	opCheck         func(Opcode) bool
@@ -391,6 +398,23 @@ func TestDecodeMnem(t *testing.T) {
 		}
 	}
 }
+
+// Address Mode Tests
+// ------------------
+// There are three ways to incorrectly decode opcode parameters:
+// 1. Using a non-parameter bit as a parameter bit
+// 2. Ignoring a parameter bit
+// 3. When there are multiple parameters, using a bit from one to decode
+//    the other.
+//
+// The first case is tested by synthesizing two "opcodes" for each
+// address mode, differing only in the non-parameter bits, which are
+// set to zero in the first and one in the second; if non-parameter
+// bits are incorrectly used then the results of decoding the two
+// "opcodes" will differ.
+//
+// The second and third cases are tested by generating every possible
+// combination of parameters for each address mode.
 
 var amodes = []struct {
 	mask uint16
