@@ -234,3 +234,31 @@ func Eor(cpu *Cpu, am *instr.AddrMode) {
 	cpu.FlagZ = res == 0
 	cpu.R[am.A1] = res
 }
+
+func Mul(cpu *Cpu, am *instr.AddrMode) {
+	res := cpu.R[am.A1] * cpu.R[am.A2]
+	cpu.FlagC = res >= 0x8000
+	cpu.FlagZ = res == 0
+	cpu.R[0] = res & 0xff
+	cpu.R[1] = res >> 8
+}
+
+func Muls(cpu *Cpu, am *instr.AddrMode) {
+	d := int8(cpu.R[am.A1])
+	r := int8(cpu.R[am.A2])
+	res := (int(d) * int(r)) & 0xffff
+	cpu.FlagC = res >= 0x8000
+	cpu.FlagZ = res == 0
+	cpu.R[0] = res & 0xff
+	cpu.R[1] = res >> 8
+}
+
+func Mulsu(cpu *Cpu, am *instr.AddrMode) {
+	d := int8(cpu.R[am.A1])
+	r := cpu.R[am.A2]
+	res := (int(d) * int(r)) & 0xffff
+	cpu.FlagC = res >= 0x8000
+	cpu.FlagZ = res == 0
+	cpu.R[0] = res & 0xff
+	cpu.R[1] = res >> 8
+}

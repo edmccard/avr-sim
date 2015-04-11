@@ -105,14 +105,37 @@ type arithCase struct {
 }
 
 func (ac arithCase) testD5R5(op OpFunc, tag string) {
-	expCpu := ac.init
-	expCpu.R[0] = ac.res
-	expCpu.R[1] = ac.v2
-	expCpu.setStatus(byte(ac.status), byte(ac.mask))
 	initCpu := ac.init
-	initCpu.R[0] = ac.v1
-	initCpu.R[1] = ac.v2
-	initCpu.am = instr.AddrMode{0, 1, instr.NoIndex}
+	d := initCpu.am.A1
+	r := initCpu.am.A2
+	if d == r && ac.v1 != ac.v2 {
+		return
+	}
+	initCpu.R[r] = ac.v2
+	initCpu.R[d] = ac.v1
+	expCpu := ac.init
+	expCpu.R[r] = ac.v2
+	expCpu.R[d] = ac.res
+	expCpu.setStatus(byte(ac.status), byte(ac.mask))
+	op(&(initCpu.Cpu), &(initCpu.am))
+	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
+}
+
+func (ac arithCase) testMul(op OpFunc, tag string) {
+	initCpu := ac.init
+	d := initCpu.am.A1
+	r := initCpu.am.A2
+	if d == r && ac.v1 != ac.v2 {
+		return
+	}
+	initCpu.R[r] = ac.v2
+	initCpu.R[d] = ac.v1
+	expCpu := ac.init
+	expCpu.R[r] = ac.v2
+	expCpu.R[d] = ac.v1
+	expCpu.R[0] = ac.res & 0xff
+	expCpu.R[1] = ac.res >> 8
+	expCpu.setStatus(byte(ac.status), byte(ac.mask))
 	op(&(initCpu.Cpu), &(initCpu.am))
 	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
 }
