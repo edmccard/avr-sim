@@ -205,3 +205,77 @@ func TestSubtraction(t *testing.T) {
 	testcase.NewTree(t, "-",
 		flagsOnOff, carryOnOff, subRespectCarry).Run("", tCpu{})
 }
+
+func andAndi(t testcase.Tree, init testcase.Testable) {
+	var andCases = []struct {
+		status, v1, v2, res int
+	}{
+		{0x00, 0x01, 0x01, 0x01},
+		{0x02, 0xaa, 0x55, 0x00},
+		{0x14, 0x80, 0x81, 0x80},
+	}
+	initTc := init.(tCpu)
+	var initCpu tCpu
+
+	for n, c := range andCases {
+		ac := arithCase{0x1e, c.status, c.v1, c.v2, c.res}
+
+		initCpu, t.Exp = initTc.setD5R5Case(ac)
+		And(&(initCpu.Cpu), &(initCpu.am))
+		t.Run(fmt.Sprintf("And [%d]", n), initCpu)
+
+		initCpu, t.Exp = initTc.setD4K8Case(ac)
+		Andi(&(initCpu.Cpu), &(initCpu.am))
+		t.Run(fmt.Sprintf("Andi [%d]", n), initCpu)
+	}
+}
+
+func orOri(t testcase.Tree, init testcase.Testable) {
+	var orCases = []struct {
+		status, v1, v2, res int
+	}{
+		{0x00, 0x01, 0x03, 0x03},
+		{0x02, 0x00, 0x00, 0x00},
+		{0x14, 0x80, 0x01, 0x81},
+	}
+
+	initTc := init.(tCpu)
+	var initCpu tCpu
+	for n, c := range orCases {
+		ac := arithCase{0x1e, c.status, c.v1, c.v2, c.res}
+
+		initCpu, t.Exp = initTc.setD5R5Case(ac)
+		Or(&(initCpu.Cpu), &(initCpu.am))
+		t.Run(fmt.Sprintf("Or [%d]", n), initCpu)
+
+		initCpu, t.Exp = initTc.setD4K8Case(ac)
+		Ori(&(initCpu.Cpu), &(initCpu.am))
+		t.Run(fmt.Sprintf("Ori [%d]", n), initCpu)
+	}
+}
+
+func eorEor(t testcase.Tree, init testcase.Testable) {
+	var eorCases = []struct {
+		status, v1, v2, res int
+	}{
+		{0x00, 0x01, 0x03, 0x02},
+		{0x02, 0xaa, 0xaa, 0x00},
+		{0x14, 0xaa, 0x55, 0xff},
+	}
+	initTc := init.(tCpu)
+	var initCpu tCpu
+
+	for n, c := range eorCases {
+		ac := arithCase{0x1e, c.status, c.v1, c.v2, c.res}
+
+		initCpu, t.Exp = initTc.setD5R5Case(ac)
+		Eor(&(initCpu.Cpu), &(initCpu.am))
+		t.Run(fmt.Sprintf("Eor [%d]", n), initCpu)
+	}
+}
+
+func TestBoolean(t *testing.T) {
+	testcase.NewTree(t, "&", flagsOnOff, andAndi).Run("", tCpu{})
+	testcase.NewTree(t, "|", flagsOnOff, orOri).Run("", tCpu{})
+	testcase.NewTree(t, "^", flagsOnOff, eorEor).Run("", tCpu{})
+}

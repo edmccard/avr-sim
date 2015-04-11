@@ -155,3 +155,46 @@ func subtractionCarry(cpu *Cpu, d, r int, carry bool) int {
 
 	return res
 }
+
+func And(cpu *Cpu, am *instr.AddrMode) {
+	cpu.R[am.A1] = boolAnd(cpu, cpu.R[am.A1], cpu.R[am.A2])
+}
+
+func Andi(cpu *Cpu, am *instr.AddrMode) {
+	cpu.R[am.A1] = boolAnd(cpu, cpu.R[am.A1], int(am.A2))
+}
+
+func boolAnd(cpu *Cpu, d, r int) int {
+	res := d & r
+	cpu.FlagV = false
+	cpu.FlagN = res >= 0x80
+	cpu.FlagS = cpu.FlagN
+	cpu.FlagZ = res == 0
+	return res
+}
+
+func Or(cpu *Cpu, am *instr.AddrMode) {
+	cpu.R[am.A1] = boolOr(cpu, cpu.R[am.A1], cpu.R[am.A2])
+}
+
+func Ori(cpu *Cpu, am *instr.AddrMode) {
+	cpu.R[am.A1] = boolOr(cpu, cpu.R[am.A1], int(am.A2))
+}
+
+func boolOr(cpu *Cpu, d, r int) int {
+	res := d | r
+	cpu.FlagV = false
+	cpu.FlagN = res >= 0x80
+	cpu.FlagS = cpu.FlagN
+	cpu.FlagZ = res == 0
+	return res
+}
+
+func Eor(cpu *Cpu, am *instr.AddrMode) {
+	res := cpu.R[am.A1] ^ cpu.R[am.A2]
+	cpu.FlagV = false
+	cpu.FlagN = res >= 0x80
+	cpu.FlagS = cpu.FlagN
+	cpu.FlagZ = res == 0
+	cpu.R[am.A1] = res
+}
