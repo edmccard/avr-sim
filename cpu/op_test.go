@@ -102,6 +102,28 @@ func addCarry(t testcase.Tree, init testcase.Testable) {
 func TestAddition(t *testing.T) {
 	testcase.NewTree(t, "+", flagsOnOff, addNoCarry).Run("", tCpu{})
 	testcase.NewTree(t, "+", flagsOnOff, addCarry).Run("", tCpu{})
+
+	adiw := func(t testcase.Tree, init testcase.Testable) {
+		var cases = []struct {
+			status, v1, v2, res int
+		}{
+			{0x00, 0x0000, 0x01, 0x0001},
+			{0x01, 0xffc3, 0x3e, 0x0001},
+			{0x02, 0x0000, 0x00, 0x0000},
+			{0x03, 0xffc2, 0x3e, 0x0000},
+			{0x0c, 0x7fc2, 0x3e, 0x8000},
+			{0x14, 0x8000, 0x00, 0x8000},
+		}
+		initTc := init.(tCpu)
+		var initCpu tCpu
+		for n, c := range cases {
+			ac := arithCase{0x1f, c.status, c.v1, c.v2, c.res}
+			initCpu, t.Exp = initTc.setDDK6Case(ac)
+			Adiw(&(initCpu.Cpu), &(initCpu.am))
+			t.Run(fmt.Sprintf("Adiw [%d]", n), initCpu)
+		}
+	}
+	testcase.NewTree(t, "+", flagsOnOff, carryOnOff, adiw).Run("", tCpu{})
 }
 
 var subCases = [][]struct {
@@ -204,6 +226,27 @@ func TestSubtraction(t *testing.T) {
 		flagsOnOff, carryOnOff, subIgnoreCarry).Run("", tCpu{})
 	testcase.NewTree(t, "-",
 		flagsOnOff, carryOnOff, subRespectCarry).Run("", tCpu{})
+
+	sbiw := func(t testcase.Tree, init testcase.Testable) {
+		var cases = []struct {
+			status, v1, v2, res int
+		}{
+			{0x00, 0x0001, 0x00, 0x0001},
+			{0x02, 0x0000, 0x00, 0x0000},
+			{0x14, 0x8000, 0x00, 0x8000},
+			{0x15, 0x0000, 0x01, 0xffff},
+			{0x18, 0x8000, 0x01, 0x7fff},
+		}
+		initTc := init.(tCpu)
+		var initCpu tCpu
+		for n, c := range cases {
+			ac := arithCase{0x1f, c.status, c.v1, c.v2, c.res}
+			initCpu, t.Exp = initTc.setDDK6Case(ac)
+			Sbiw(&(initCpu.Cpu), &(initCpu.am))
+			t.Run(fmt.Sprintf("Sbiw [%d]", n), initCpu)
+		}
+	}
+	testcase.NewTree(t, "-", flagsOnOff, carryOnOff, sbiw).Run("", tCpu{})
 }
 
 func andAndi(t testcase.Tree, init testcase.Testable) {

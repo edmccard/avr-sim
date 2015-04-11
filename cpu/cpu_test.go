@@ -110,6 +110,19 @@ func (tc *tCpu) setD4K8Case(ac arithCase) (tCpu, tCpu) {
 	return gotCpu, expCpu
 }
 
+// Helper for setting up regpair/immediate arithmetic expectations.
+func (tc *tCpu) setDDK6Case(ac arithCase) (tCpu, tCpu) {
+	expCpu := *tc
+	expCpu.R[24] = ac.res & 0xff
+	expCpu.R[25] = ac.res >> 8
+	expCpu.setStatus(byte(ac.status), byte(ac.mask))
+	gotCpu := *tc
+	gotCpu.R[24] = ac.v1 & 0xff
+	gotCpu.R[25] = ac.v1 >> 8
+	gotCpu.am = instr.AddrMode{24, instr.Addr(ac.v2), instr.NoIndex}
+	return gotCpu, expCpu
+}
+
 // Helper for setting expected status
 func (tc *tCpu) setStatus(expStatus, mask byte) {
 	setFlags := mask & expStatus

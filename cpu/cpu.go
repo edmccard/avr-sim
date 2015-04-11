@@ -86,6 +86,23 @@ func addition(cpu *Cpu, am *instr.AddrMode, carry bool) {
 	cpu.R[am.A1] = res
 }
 
+func Adiw(cpu *Cpu, am *instr.AddrMode) {
+	d := cpu.R[am.A1] | (cpu.R[am.A1+1] << 8)
+	k := int(am.A2)
+
+	res := (d + k) & 0xffff
+	hr := (res & 0x8000) != 0
+	hd := (d & 0x8000) != 0
+	cpu.FlagC = !hr && hd
+	cpu.FlagZ = res == 0
+	cpu.FlagN = hr
+	cpu.FlagV = !hd && hr
+	cpu.FlagS = cpu.FlagV != cpu.FlagN
+
+	cpu.R[am.A1] = res & 0xff
+	cpu.R[am.A1+1] = res >> 8
+}
+
 func Sub(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[am.A1] = subtractionNoCarry(cpu, cpu.R[am.A1], cpu.R[am.A2])
 }
@@ -154,6 +171,23 @@ func subtractionCarry(cpu *Cpu, d, r int, carry bool) int {
 	cpu.FlagS = cpu.FlagV != cpu.FlagN
 
 	return res
+}
+
+func Sbiw(cpu *Cpu, am *instr.AddrMode) {
+	d := cpu.R[am.A1] | (cpu.R[am.A1+1] << 8)
+	k := int(am.A2)
+
+	res := (d - k) & 0xffff
+	hr := (res & 0x8000) != 0
+	hd := (d & 0x8000) != 0
+	cpu.FlagC = hr && !hd
+	cpu.FlagZ = res == 0
+	cpu.FlagN = hr
+	cpu.FlagV = hd && !hr
+	cpu.FlagS = cpu.FlagV != cpu.FlagN
+
+	cpu.R[am.A1] = res & 0xff
+	cpu.R[am.A1+1] = res >> 8
 }
 
 func And(cpu *Cpu, am *instr.AddrMode) {
