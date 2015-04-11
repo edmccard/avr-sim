@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-// tCpu wraps Cpu to implement Testable and to make it simpler to set up
-// initial conditions for test cases.
+// tCpu wraps Cpu to implement Testable, and to simplify setting up
+// initial state for tests.
 type tCpu struct {
 	Cpu
 	am instr.AddrMode
@@ -82,43 +82,6 @@ func (this tCpu) sDiff(that tCpu) (sThis, sThat string) {
 	return
 }
 
-// Helper for setting up two-register arithmetic expectations.
-func (tc *tCpu) setD5R5Case(ac arithCase) (tCpu, tCpu) {
-	expCpu := *tc
-	expCpu.R[0] = ac.res
-	expCpu.R[1] = ac.v2
-	expCpu.setStatus(byte(ac.status), byte(ac.mask))
-	gotCpu := *tc
-	gotCpu.R[0] = ac.v1
-	gotCpu.R[1] = ac.v2
-	gotCpu.am = instr.AddrMode{0, 1, instr.NoIndex}
-	return gotCpu, expCpu
-}
-
-// Helper for setting up register/immediate arithmetic expectations.
-func (tc *tCpu) setD4K8Case(ac arithCase) (tCpu, tCpu) {
-	expCpu := *tc
-	expCpu.R[16] = ac.res
-	expCpu.setStatus(byte(ac.status), byte(ac.mask))
-	gotCpu := *tc
-	gotCpu.R[16] = ac.v1
-	gotCpu.am = instr.AddrMode{16, instr.Addr(ac.v2), instr.NoIndex}
-	return gotCpu, expCpu
-}
-
-// Helper for setting up regpair/immediate arithmetic expectations.
-func (tc *tCpu) setDDK6Case(ac arithCase) (tCpu, tCpu) {
-	expCpu := *tc
-	expCpu.R[24] = ac.res & 0xff
-	expCpu.R[25] = ac.res >> 8
-	expCpu.setStatus(byte(ac.status), byte(ac.mask))
-	gotCpu := *tc
-	gotCpu.R[24] = ac.v1 & 0xff
-	gotCpu.R[25] = ac.v1 >> 8
-	gotCpu.am = instr.AddrMode{24, instr.Addr(ac.v2), instr.NoIndex}
-	return gotCpu, expCpu
-}
-
 // Helper for setting expected status
 func (tc *tCpu) setStatus(expStatus, mask byte) {
 	setFlags := mask & expStatus
@@ -129,32 +92,51 @@ func (tc *tCpu) setStatus(expStatus, mask byte) {
 	tc.SregFromByte(status)
 }
 
+type caseData struct {
+	status, v1, v2, res int
+}
+
 type arithCase struct {
-	mask, status int
-	v1, v2       int
-	res, n       int
+	t    testcase.Tree
+	init tCpu
+	mask int
+	caseData
+	n int
 }
 
-func (ac arithCase) testD5R5(t testcase.Tree, init tCpu, op OpFunc,
-	tag string) {
-
-	initCpu, expCpu := init.setD5R5Case(ac)
+func (ac arithCase) testD5R5(op OpFunc, tag string) {
+	expCpu := ac.init
+	expCpu.R[0] = ac.res
+	expCpu.R[1] = ac.v2
+	expCpu.setStatus(byte(ac.status), byte(ac.mask))
+	initCpu := ac.init
+	initCpu.R[0] = ac.v1
+	initCpu.R[1] = ac.v2
+	initCpu.am = instr.AddrMode{0, 1, instr.NoIndex}
 	op(&(initCpu.Cpu), &(initCpu.am))
-	t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
+	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
 }
 
-func (ac arithCase) testD4K8(t testcase.Tree, init tCpu, op OpFunc,
-	tag string) {
-
-	initCpu, expCpu := init.setD4K8Case(ac)
+func (ac arithCase) testD4K8(op OpFunc, tag string) {
+	expCpu := ac.init
+	expCpu.R[16] = ac.res
+	expCpu.setStatus(byte(ac.status), byte(ac.mask))
+	initCpu := ac.init
+	initCpu.R[16] = ac.v1
+	initCpu.am = instr.AddrMode{16, instr.Addr(ac.v2), instr.NoIndex}
 	op(&(initCpu.Cpu), &(initCpu.am))
-	t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
+	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
 }
 
-func (ac arithCase) testDDK6(t testcase.Tree, init tCpu, op OpFunc,
-	tag string) {
-
-	initCpu, expCpu := init.setDDK6Case(ac)
+func (ac arithCase) testDDK6(op OpFunc, tag string) {
+	expCpu := ac.init
+	expCpu.R[24] = ac.res & 0xff
+	expCpu.R[25] = ac.res >> 8
+	expCpu.setStatus(byte(ac.status), byte(ac.mask))
+	initCpu:= ac.init
+	initCpu.R[24] = ac.v1 & 0xff
+	initCpu.R[25] = ac.v1 >> 8
+	initCpu.am = instr.AddrMode{24, instr.Addr(ac.v2), instr.NoIndex}
 	op(&(initCpu.Cpu), &(initCpu.am))
-	t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
+	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
 }

@@ -23,9 +23,7 @@ func carryOnOff(t testcase.Tree, init, exp testcase.Testable) {
 	t.Run("C0", initTc, exp)
 }
 
-var addCases = [][]struct {
-	status, v1, v2, res int
-}{
+var addCases = [][]caseData {
 	{
 		{0x00, 0x00, 0x01, 0x01},
 		{0x01, 0x10, 0xf1, 0x01},
@@ -62,10 +60,9 @@ var addCases = [][]struct {
 }
 
 func addIgnoreCarry(t testcase.Tree, init, exp testcase.Testable) {
-	initTc := init.(tCpu)
 	for n, c := range addCases[0] {
-		ac := arithCase{0x3f, c.status, c.v1, c.v2, c.res, n}
-		ac.testD5R5(t, initTc, Add, "(ign.) Add")
+		ac := arithCase{t, init.(tCpu), 0x3f, c, n}
+		ac.testD5R5(Add, "(ign.) Add")
 	}
 }
 
@@ -77,8 +74,8 @@ func addRespectCarry(t testcase.Tree, init, exp testcase.Testable) {
 	}
 
 	for n, c := range addCases[cIdx] {
-		ac := arithCase{0x3f, c.status, c.v1, c.v2, c.res, n}
-		ac.testD5R5(t, initTc, Adc, "(resp.) Adc")
+		ac := arithCase{t, init.(tCpu), 0x3f, c, n}
+		ac.testD5R5(Adc, "(resp.) Adc")
 	}
 }
 
@@ -89,9 +86,7 @@ func TestAddition(t *testing.T) {
 		flagsOnOff, carryOnOff, addRespectCarry).Start(tCpu{})
 
 	adiw := func(t testcase.Tree, init, exp testcase.Testable) {
-		var cases = []struct {
-			status, v1, v2, res int
-		}{
+		var cases = []caseData {
 			{0x00, 0x0000, 0x01, 0x0001},
 			{0x01, 0xffc3, 0x3e, 0x0001},
 			{0x02, 0x0000, 0x00, 0x0000},
@@ -99,18 +94,15 @@ func TestAddition(t *testing.T) {
 			{0x0c, 0x7fc2, 0x3e, 0x8000},
 			{0x14, 0x8000, 0x00, 0x8000},
 		}
-		initTc := init.(tCpu)
 		for n, c := range cases {
-			ac := arithCase{0x1f, c.status, c.v1, c.v2, c.res, n}
-			ac.testDDK6(t, initTc, Adiw, "Adiw")
+			ac := arithCase{t, init.(tCpu), 0x1f, c, n}
+			ac.testDDK6(Adiw, "Adiw")
 		}
 	}
 	testcase.NewTree(t, "+", flagsOnOff, carryOnOff, adiw).Start(tCpu{})
 }
 
-var subCases = [][]struct {
-	status, v1, v2, res int
-}{
+var subCases = [][]caseData {
 	{
 		{0x00, 0x01, 0x00, 0x01},
 		{0x01, 0x00, 0x90, 0x70},
@@ -147,14 +139,14 @@ var subCases = [][]struct {
 
 // Tests Sub, Subi, Cp, Cpi with cases for each possible status outcome.
 func subIgnoreCarry(t testcase.Tree, init, exp testcase.Testable) {
-	initTc := init.(tCpu)
 	for n, c := range subCases[0] {
-		acsub := arithCase{0x3f, c.status, c.v1, c.v2, c.res, n}
-		accp := arithCase{0x3f, c.status, c.v1, c.v2, c.v1, n}
-		acsub.testD5R5(t, initTc, Sub, "(ign.) Sub")
-		acsub.testD4K8(t, initTc, Subi, "(ign.) Subi")
-		accp.testD5R5(t, initTc, Cp, "(ign.) Cp")
-		accp.testD4K8(t, initTc, Cpi, "(ign.) Cpi")
+		acsub := arithCase{t, init.(tCpu), 0x3f, c, n}
+		accp := acsub
+		accp.res = accp.v1
+		acsub.testD5R5(Sub, "(ign.) Sub")
+		acsub.testD4K8(Subi, "(ign.) Subi")
+		accp.testD5R5(Cp, "(ign.) Cp")
+		accp.testD4K8(Cpi, "(ign.) Cpi")
 	}
 }
 
@@ -167,15 +159,16 @@ func subRespectCarry(t testcase.Tree, init, exp testcase.Testable) {
 	}
 
 	for n, c := range subCases[cIdx] {
-		acsub := arithCase{0x3f, c.status, c.v1, c.v2, c.res, n}
-		accp := arithCase{0x3f, c.status, c.v1, c.v2, c.v1, n}
+		acsub := arithCase{t, init.(tCpu), 0x3f, c, n}
+		accp := acsub
+		accp.res = accp.v1
 		if c.res == 0 {
 			acsub.mask = 0x3d
 			accp.mask = 0x3d
 		}
-		acsub.testD5R5(t, initTc, Sbc, "(resp.) Sbc")
-		accp.testD5R5(t, initTc, Cpc, "(resp.) Cpc")
-		acsub.testD4K8(t, initTc, Sbci, "(resp.) Sbci")
+		acsub.testD5R5(Sbc, "(resp.) Sbc")
+		accp.testD5R5(Cpc, "(resp.) Cpc")
+		acsub.testD4K8(Sbci, "(resp.) Sbci")
 	}
 }
 
@@ -186,69 +179,56 @@ func TestSubtraction(t *testing.T) {
 		flagsOnOff, carryOnOff, subRespectCarry).Start(tCpu{})
 
 	sbiw := func(t testcase.Tree, init, exp testcase.Testable) {
-		var cases = []struct {
-			status, v1, v2, res int
-		}{
+		var cases = []caseData {
 			{0x00, 0x0001, 0x00, 0x0001},
 			{0x02, 0x0000, 0x00, 0x0000},
 			{0x14, 0x8000, 0x00, 0x8000},
 			{0x15, 0x0000, 0x01, 0xffff},
 			{0x18, 0x8000, 0x01, 0x7fff},
 		}
-		initTc := init.(tCpu)
 		for n, c := range cases {
-			ac := arithCase{0x1f, c.status, c.v1, c.v2, c.res, n}
-			ac.testDDK6(t, initTc, Sbiw, "Sbiw")
+			ac := arithCase{t, init.(tCpu), 0x1f, c, n}
+			ac.testDDK6(Sbiw, "Sbiw")
 		}
 	}
 	testcase.NewTree(t, "-", flagsOnOff, carryOnOff, sbiw).Start(tCpu{})
 }
 
 func andAndi(t testcase.Tree, init, exp testcase.Testable) {
-	var andCases = []struct {
-		status, v1, v2, res int
-	}{
+	var andCases = []caseData {
 		{0x00, 0x01, 0x01, 0x01},
 		{0x02, 0xaa, 0x55, 0x00},
 		{0x14, 0x80, 0x81, 0x80},
 	}
-	initTc := init.(tCpu)
 	for n, c := range andCases {
-		ac := arithCase{0x1e, c.status, c.v1, c.v2, c.res, n}
-		ac.testD5R5(t, initTc, And, "And")
-		ac.testD4K8(t, initTc, Andi, "Andi")
+		ac := arithCase{t, init.(tCpu), 0x1e, c, n}
+		ac.testD5R5(And, "And")
+		ac.testD4K8(Andi, "Andi")
 	}
 }
 
 func orOri(t testcase.Tree, init, exp testcase.Testable) {
-	var orCases = []struct {
-		status, v1, v2, res int
-	}{
+	var orCases = []caseData {
 		{0x00, 0x01, 0x03, 0x03},
 		{0x02, 0x00, 0x00, 0x00},
 		{0x14, 0x80, 0x01, 0x81},
 	}
-
-	initTc := init.(tCpu)
 	for n, c := range orCases {
-		ac := arithCase{0x1e, c.status, c.v1, c.v2, c.res, n}
-		ac.testD5R5(t, initTc, Or, "Or")
-		ac.testD4K8(t, initTc, Ori, "Ori")
+		ac := arithCase{t, init.(tCpu), 0x1e, c, n}
+		ac.testD5R5(Or, "Or")
+		ac.testD4K8(Ori, "Ori")
 	}
 }
 
 func eorEor(t testcase.Tree, init, exp testcase.Testable) {
-	var eorCases = []struct {
-		status, v1, v2, res int
-	}{
+	var eorCases = []caseData {
 		{0x00, 0x01, 0x03, 0x02},
 		{0x02, 0xaa, 0xaa, 0x00},
 		{0x14, 0xaa, 0x55, 0xff},
 	}
-	initTc := init.(tCpu)
 	for n, c := range eorCases {
-		ac := arithCase{0x1e, c.status, c.v1, c.v2, c.res, n}
-		ac.testD5R5(t, initTc, Eor, "Eor")
+		ac := arithCase{t, init.(tCpu), 0x1e, c, n}
+		ac.testD5R5(Eor, "Eor")
 	}
 }
 
