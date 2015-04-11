@@ -55,6 +55,8 @@ func (c *Cpu) ByteFromSreg() (b byte) {
 	return
 }
 
+type OpFunc func(*Cpu, *instr.AddrMode)
+
 func Adc(cpu *Cpu, am *instr.AddrMode) {
 	addition(cpu, am, cpu.FlagC)
 }

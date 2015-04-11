@@ -1,35 +1,32 @@
 package cpu
 
 import (
-	"fmt"
 	"github.com/edmccard/testcase"
 	"testing"
 )
 
 // Branches with all flags initially set/all flags initially clear.
-func flagsOnOff(t testcase.Tree, init testcase.Testable) {
+func flagsOnOff(t testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
 	initTc.SregFromByte(0xff)
-	t.Run("SRff", initTc)
+	t.Run("SRff", initTc, exp)
 	initTc.SregFromByte(0x00)
-	t.Run("SR00", initTc)
+	t.Run("SR00", initTc, exp)
 }
 
 // Branches with carry flag set/carry flag clear
-func carryOnOff(t testcase.Tree, init testcase.Testable) {
+func carryOnOff(t testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
 	initTc.FlagC = true
-	t.Run("C1", initTc)
+	t.Run("C1", initTc, exp)
 	initTc.FlagC = false
-	t.Run("C0", initTc)
+	t.Run("C0", initTc, exp)
 }
 
-// Tests Adc with carry false, and Add with carry true/false,
-// with cases for each possible status outcome.
-func addNoCarry(t testcase.Tree, init testcase.Testable) {
-	cases := []struct {
-		status, v1, v2, res int
-	}{
+var addCases = [][]struct {
+	status, v1, v2, res int
+}{
+	{
 		{0x00, 0x00, 0x01, 0x01},
 		{0x01, 0x10, 0xf1, 0x01},
 		{0x02, 0x00, 0x00, 0x00},
@@ -46,34 +43,8 @@ func addNoCarry(t testcase.Tree, init testcase.Testable) {
 		{0x34, 0x01, 0x8f, 0x90},
 		{0x35, 0x81, 0xff, 0x80},
 		{0x39, 0x81, 0x8f, 0x10},
-	}
-	initTc := init.(tCpu)
-	var initCpu tCpu
-	for n, c := range cases {
-		ac := arithCase{0x3f, c.status, c.v1, c.v2, c.res}
-
-		initCpu, t.Exp = initTc.setD5R5Case(ac)
-		initCpu.FlagC = false
-		Adc(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("Adc C0[%d]", n), initCpu)
-
-		initCpu, t.Exp = initTc.setD5R5Case(ac)
-		initCpu.FlagC = false
-		Add(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("Add C0[%d]", n), initCpu)
-
-		initCpu, t.Exp = initTc.setD5R5Case(ac)
-		initCpu.FlagC = true
-		Add(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("Add C1[%d]", n), initCpu)
-	}
-}
-
-// Tests Adc with carry true, with cases for each possible status outcome.
-func addCarry(t testcase.Tree, init testcase.Testable) {
-	cases := []struct {
-		status, v1, v2, res int
-	}{
+	},
+	{
 		{0x00, 0x00, 0x00, 0x01},
 		{0x01, 0x10, 0xf0, 0x01},
 		{0x0c, 0x10, 0x70, 0x81},
@@ -87,23 +58,37 @@ func addCarry(t testcase.Tree, init testcase.Testable) {
 		{0x34, 0x00, 0x8f, 0x90},
 		{0x35, 0x80, 0xff, 0x80},
 		{0x39, 0x80, 0x8f, 0x10},
-	}
+	},
+}
+
+func addIgnoreCarry(t testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
-	var initCpu tCpu
-	for n, c := range cases {
-		ac := arithCase{0x3f, c.status, c.v1, c.v2, c.res}
-		initCpu, t.Exp = initTc.setD5R5Case(ac)
-		initCpu.FlagC = true
-		Adc(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("Adc C0[%d]", n), initCpu)
+	for n, c := range addCases[0] {
+		ac := arithCase{0x3f, c.status, c.v1, c.v2, c.res, n}
+		ac.testD5R5(t, initTc, Add, "(ign.) Add")
+	}
+}
+
+func addRespectCarry(t testcase.Tree, init, exp testcase.Testable) {
+	initTc := init.(tCpu)
+	cIdx := 0
+	if initTc.FlagC {
+		cIdx = 1
+	}
+
+	for n, c := range addCases[cIdx] {
+		ac := arithCase{0x3f, c.status, c.v1, c.v2, c.res, n}
+		ac.testD5R5(t, initTc, Adc, "(resp.) Adc")
 	}
 }
 
 func TestAddition(t *testing.T) {
-	testcase.NewTree(t, "+", flagsOnOff, addNoCarry).Run("", tCpu{})
-	testcase.NewTree(t, "+", flagsOnOff, addCarry).Run("", tCpu{})
+	testcase.NewTree(t, "+",
+		flagsOnOff, carryOnOff, addIgnoreCarry).Start(tCpu{})
+	testcase.NewTree(t, "+",
+		flagsOnOff, carryOnOff, addRespectCarry).Start(tCpu{})
 
-	adiw := func(t testcase.Tree, init testcase.Testable) {
+	adiw := func(t testcase.Tree, init, exp testcase.Testable) {
 		var cases = []struct {
 			status, v1, v2, res int
 		}{
@@ -115,15 +100,12 @@ func TestAddition(t *testing.T) {
 			{0x14, 0x8000, 0x00, 0x8000},
 		}
 		initTc := init.(tCpu)
-		var initCpu tCpu
 		for n, c := range cases {
-			ac := arithCase{0x1f, c.status, c.v1, c.v2, c.res}
-			initCpu, t.Exp = initTc.setDDK6Case(ac)
-			Adiw(&(initCpu.Cpu), &(initCpu.am))
-			t.Run(fmt.Sprintf("Adiw [%d]", n), initCpu)
+			ac := arithCase{0x1f, c.status, c.v1, c.v2, c.res, n}
+			ac.testDDK6(t, initTc, Adiw, "Adiw")
 		}
 	}
-	testcase.NewTree(t, "+", flagsOnOff, carryOnOff, adiw).Run("", tCpu{})
+	testcase.NewTree(t, "+", flagsOnOff, carryOnOff, adiw).Start(tCpu{})
 }
 
 var subCases = [][]struct {
@@ -164,70 +146,46 @@ var subCases = [][]struct {
 }
 
 // Tests Sub, Subi, Cp, Cpi with cases for each possible status outcome.
-func subIgnoreCarry(t testcase.Tree, init testcase.Testable) {
+func subIgnoreCarry(t testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
-	var initCpu tCpu
 	for n, c := range subCases[0] {
-		acsub := arithCase{0x3f, c.status, c.v1, c.v2, c.res}
-		accp := arithCase{0x3f, c.status, c.v1, c.v2, c.v1}
-
-		initCpu, t.Exp = initTc.setD5R5Case(acsub)
-		Sub(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("(ig.) Sub [%d]", n), initCpu)
-
-		initCpu, t.Exp = initTc.setD4K8Case(acsub)
-		Subi(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("(ig.) Subi [%d]", n), initCpu)
-
-		initCpu, t.Exp = initTc.setD5R5Case(accp)
-		Cp(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("(ig.) Cp [%d]", n), initCpu)
-
-		initCpu, t.Exp = initTc.setD4K8Case(accp)
-		Cpi(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("(ig.) Cpi [%d]", n), initCpu)
+		acsub := arithCase{0x3f, c.status, c.v1, c.v2, c.res, n}
+		accp := arithCase{0x3f, c.status, c.v1, c.v2, c.v1, n}
+		acsub.testD5R5(t, initTc, Sub, "(ign.) Sub")
+		acsub.testD4K8(t, initTc, Subi, "(ign.) Subi")
+		accp.testD5R5(t, initTc, Cp, "(ign.) Cp")
+		accp.testD4K8(t, initTc, Cpi, "(ign.) Cpi")
 	}
 }
 
 // Tests Sbc, Cpc, Sbci with cases for each possible status outcome.
-func subRespectCarry(t testcase.Tree, init testcase.Testable) {
+func subRespectCarry(t testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
-	var initCpu tCpu
 	cIdx := 0
 	if initTc.FlagC {
 		cIdx = 1
 	}
 
 	for n, c := range subCases[cIdx] {
-		acsub := arithCase{0x3f, c.status, c.v1, c.v2, c.res}
-		accp := arithCase{0x3f, c.status, c.v1, c.v2, c.v1}
-
+		acsub := arithCase{0x3f, c.status, c.v1, c.v2, c.res, n}
+		accp := arithCase{0x3f, c.status, c.v1, c.v2, c.v1, n}
 		if c.res == 0 {
 			acsub.mask = 0x3d
 			accp.mask = 0x3d
 		}
-
-		initCpu, t.Exp = initTc.setD5R5Case(acsub)
-		Sbc(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("(resp.) Sbc [%d]", n), initCpu)
-
-		initCpu, t.Exp = initTc.setD5R5Case(accp)
-		Cpc(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("(resp.) Cpc [%d]", n), initCpu)
-
-		initCpu, t.Exp = initTc.setD4K8Case(acsub)
-		Sbci(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("(resp.) Sbci [%d]", n), initCpu)
+		acsub.testD5R5(t, initTc, Sbc, "(resp.) Sbc")
+		accp.testD5R5(t, initTc, Cpc, "(resp.) Cpc")
+		acsub.testD4K8(t, initTc, Sbci, "(resp.) Sbci")
 	}
 }
 
 func TestSubtraction(t *testing.T) {
 	testcase.NewTree(t, "-",
-		flagsOnOff, carryOnOff, subIgnoreCarry).Run("", tCpu{})
+		flagsOnOff, carryOnOff, subIgnoreCarry).Start(tCpu{})
 	testcase.NewTree(t, "-",
-		flagsOnOff, carryOnOff, subRespectCarry).Run("", tCpu{})
+		flagsOnOff, carryOnOff, subRespectCarry).Start(tCpu{})
 
-	sbiw := func(t testcase.Tree, init testcase.Testable) {
+	sbiw := func(t testcase.Tree, init, exp testcase.Testable) {
 		var cases = []struct {
 			status, v1, v2, res int
 		}{
@@ -238,18 +196,15 @@ func TestSubtraction(t *testing.T) {
 			{0x18, 0x8000, 0x01, 0x7fff},
 		}
 		initTc := init.(tCpu)
-		var initCpu tCpu
 		for n, c := range cases {
-			ac := arithCase{0x1f, c.status, c.v1, c.v2, c.res}
-			initCpu, t.Exp = initTc.setDDK6Case(ac)
-			Sbiw(&(initCpu.Cpu), &(initCpu.am))
-			t.Run(fmt.Sprintf("Sbiw [%d]", n), initCpu)
+			ac := arithCase{0x1f, c.status, c.v1, c.v2, c.res, n}
+			ac.testDDK6(t, initTc, Sbiw, "Sbiw")
 		}
 	}
-	testcase.NewTree(t, "-", flagsOnOff, carryOnOff, sbiw).Run("", tCpu{})
+	testcase.NewTree(t, "-", flagsOnOff, carryOnOff, sbiw).Start(tCpu{})
 }
 
-func andAndi(t testcase.Tree, init testcase.Testable) {
+func andAndi(t testcase.Tree, init, exp testcase.Testable) {
 	var andCases = []struct {
 		status, v1, v2, res int
 	}{
@@ -258,22 +213,14 @@ func andAndi(t testcase.Tree, init testcase.Testable) {
 		{0x14, 0x80, 0x81, 0x80},
 	}
 	initTc := init.(tCpu)
-	var initCpu tCpu
-
 	for n, c := range andCases {
-		ac := arithCase{0x1e, c.status, c.v1, c.v2, c.res}
-
-		initCpu, t.Exp = initTc.setD5R5Case(ac)
-		And(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("And [%d]", n), initCpu)
-
-		initCpu, t.Exp = initTc.setD4K8Case(ac)
-		Andi(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("Andi [%d]", n), initCpu)
+		ac := arithCase{0x1e, c.status, c.v1, c.v2, c.res, n}
+		ac.testD5R5(t, initTc, And, "And")
+		ac.testD4K8(t, initTc, Andi, "Andi")
 	}
 }
 
-func orOri(t testcase.Tree, init testcase.Testable) {
+func orOri(t testcase.Tree, init, exp testcase.Testable) {
 	var orCases = []struct {
 		status, v1, v2, res int
 	}{
@@ -283,21 +230,14 @@ func orOri(t testcase.Tree, init testcase.Testable) {
 	}
 
 	initTc := init.(tCpu)
-	var initCpu tCpu
 	for n, c := range orCases {
-		ac := arithCase{0x1e, c.status, c.v1, c.v2, c.res}
-
-		initCpu, t.Exp = initTc.setD5R5Case(ac)
-		Or(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("Or [%d]", n), initCpu)
-
-		initCpu, t.Exp = initTc.setD4K8Case(ac)
-		Ori(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("Ori [%d]", n), initCpu)
+		ac := arithCase{0x1e, c.status, c.v1, c.v2, c.res, n}
+		ac.testD5R5(t, initTc, Or, "Or")
+		ac.testD4K8(t, initTc, Ori, "Ori")
 	}
 }
 
-func eorEor(t testcase.Tree, init testcase.Testable) {
+func eorEor(t testcase.Tree, init, exp testcase.Testable) {
 	var eorCases = []struct {
 		status, v1, v2, res int
 	}{
@@ -306,19 +246,14 @@ func eorEor(t testcase.Tree, init testcase.Testable) {
 		{0x14, 0xaa, 0x55, 0xff},
 	}
 	initTc := init.(tCpu)
-	var initCpu tCpu
-
 	for n, c := range eorCases {
-		ac := arithCase{0x1e, c.status, c.v1, c.v2, c.res}
-
-		initCpu, t.Exp = initTc.setD5R5Case(ac)
-		Eor(&(initCpu.Cpu), &(initCpu.am))
-		t.Run(fmt.Sprintf("Eor [%d]", n), initCpu)
+		ac := arithCase{0x1e, c.status, c.v1, c.v2, c.res, n}
+		ac.testD5R5(t, initTc, Eor, "Eor")
 	}
 }
 
 func TestBoolean(t *testing.T) {
-	testcase.NewTree(t, "&", flagsOnOff, andAndi).Run("", tCpu{})
-	testcase.NewTree(t, "|", flagsOnOff, orOri).Run("", tCpu{})
-	testcase.NewTree(t, "^", flagsOnOff, eorEor).Run("", tCpu{})
+	testcase.NewTree(t, "&", flagsOnOff, andAndi).Start(tCpu{})
+	testcase.NewTree(t, "|", flagsOnOff, orOri).Start(tCpu{})
+	testcase.NewTree(t, "^", flagsOnOff, eorEor).Start(tCpu{})
 }

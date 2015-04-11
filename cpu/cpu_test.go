@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Wraps Cpu to implement Testable and to make it simpler to set up
+// tCpu wraps Cpu to implement Testable and to make it simpler to set up
 // initial conditions for test cases.
 type tCpu struct {
 	Cpu
@@ -82,10 +82,6 @@ func (this tCpu) sDiff(that tCpu) (sThis, sThat string) {
 	return
 }
 
-type arithCase struct {
-	mask, status, v1, v2, res int
-}
-
 // Helper for setting up two-register arithmetic expectations.
 func (tc *tCpu) setD5R5Case(ac arithCase) (tCpu, tCpu) {
 	expCpu := *tc
@@ -131,4 +127,34 @@ func (tc *tCpu) setStatus(expStatus, mask byte) {
 	status &= clrFlags
 	status |= setFlags
 	tc.SregFromByte(status)
+}
+
+type arithCase struct {
+	mask, status int
+	v1, v2       int
+	res, n       int
+}
+
+func (ac arithCase) testD5R5(t testcase.Tree, init tCpu, op OpFunc,
+	tag string) {
+
+	initCpu, expCpu := init.setD5R5Case(ac)
+	op(&(initCpu.Cpu), &(initCpu.am))
+	t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
+}
+
+func (ac arithCase) testD4K8(t testcase.Tree, init tCpu, op OpFunc,
+	tag string) {
+
+	initCpu, expCpu := init.setD4K8Case(ac)
+	op(&(initCpu.Cpu), &(initCpu.am))
+	t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
+}
+
+func (ac arithCase) testDDK6(t testcase.Tree, init tCpu, op OpFunc,
+	tag string) {
+
+	initCpu, expCpu := init.setDDK6Case(ac)
+	op(&(initCpu.Cpu), &(initCpu.am))
+	t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
 }
