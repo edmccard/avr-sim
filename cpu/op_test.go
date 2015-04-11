@@ -100,13 +100,8 @@ func addCarry(t testcase.Tree, init testcase.Testable) {
 }
 
 func TestAddition(t *testing.T) {
-	funcs := []testcase.Branch{flagsOnOff, addNoCarry}
-	tree := testcase.Tree{"", t, funcs, nil}
-	tree.Run("+", tCpu{})
-
-	funcs = []testcase.Branch{flagsOnOff, addCarry}
-	tree = testcase.Tree{"", t, funcs, nil}
-	tree.Run("+", tCpu{})
+	testcase.NewTree(t, "+", flagsOnOff, addNoCarry).Run("", tCpu{})
+	testcase.NewTree(t, "+", flagsOnOff, addCarry).Run("", tCpu{})
 }
 
 var subCases = [][]struct {
@@ -205,11 +200,8 @@ func subRespectCarry(t testcase.Tree, init testcase.Testable) {
 }
 
 func TestSubtraction(t *testing.T) {
-	funcs := []testcase.Branch{flagsOnOff, carryOnOff, subIgnoreCarry}
-	tree := testcase.Tree{"", t, funcs, nil}
-	tree.Run("-", tCpu{})
-
-	funcs = []testcase.Branch{flagsOnOff, carryOnOff, subRespectCarry}
-	tree = testcase.Tree{"", t, funcs, nil}
-	tree.Run("-", tCpu{})
+	testcase.NewTree(t, "-",
+		flagsOnOff, carryOnOff, subIgnoreCarry).Run("", tCpu{})
+	testcase.NewTree(t, "-",
+		flagsOnOff, carryOnOff, subRespectCarry).Run("", tCpu{})
 }
