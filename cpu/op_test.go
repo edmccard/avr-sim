@@ -487,3 +487,32 @@ func TestRMW(t *testing.T) {
 	testcase.NewTree(t, "RMW", flagsOnOff, rmwRMW).Start(tCpu{})
 	testcase.NewTree(t, "RMW", flagsOnOff, carryOnOff, rmwSR).Start(tCpu{})
 }
+
+func TestBranch(t *testing.T) {
+	brbs := func(tree testcase.Tree, init, exp testcase.Testable) {
+		for bit := 0; bit < 7; bit++ {
+			// Flag clear, no branch
+			bc := branchCase{tree, init.(tCpu),
+				branchData{bit, 0x00, 0x3f, 0x1001, 0x1001}}
+			bc.testBranch(Brbs, "Brbs")
+			// Flag set, branch
+			bc = branchCase{tree, init.(tCpu),
+				branchData{bit, 0xff, 0x3f, 0x1001, 0x1040}}
+			bc.testBranch(Brbs, "Brbs")
+		}
+	}
+	brbc := func(tree testcase.Tree, init, exp testcase.Testable) {
+		for bit := 0; bit < 7; bit++ {
+			// Flag clear, branch
+			bc := branchCase{tree, init.(tCpu),
+				branchData{bit, 0x00, 0x3f, 0x1001, 0x1040}}
+			bc.testBranch(Brbc, "Brbc")
+			// Flag set, no branch
+			bc = branchCase{tree, init.(tCpu),
+				branchData{bit, 0xff, 0x3f, 0x1001, 0x1001}}
+			bc.testBranch(Brbc, "Brbc")
+		}
+	}
+	testcase.NewTree(t, "BR", flagsOnOff, brbs).Start(tCpu{})
+	testcase.NewTree(t, "BR", flagsOnOff, brbc).Start(tCpu{})
+}

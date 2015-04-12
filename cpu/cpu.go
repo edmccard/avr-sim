@@ -379,3 +379,17 @@ func Ror(cpu *Cpu, am *instr.AddrMode) {
 	cpu.FlagS = cpu.FlagV
 	cpu.R[am.A1] = res
 }
+
+func Brbs(cpu *Cpu, am *instr.AddrMode) {
+	s := cpu.ByteFromSreg()
+	if (s & (1 << uint(am.A1))) != 0 {
+		cpu.PC += int(am.A2)
+	}
+}
+
+func Brbc(cpu *Cpu, am *instr.AddrMode) {
+	s := cpu.ByteFromSreg()
+	if (s & (1 << uint(am.A1))) == 0 {
+		cpu.PC += int(am.A2)
+	}
+}

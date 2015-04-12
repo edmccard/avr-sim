@@ -183,3 +183,26 @@ func (ac arithCase) testMovw() {
 	Movw(&(initCpu.Cpu), &(initCpu.am))
 	ac.t.Run(fmt.Sprintf("Movw [%d]", ac.n), initCpu, expCpu)
 }
+
+type branchData struct {
+	bit, status, offset, pre, post int
+}
+
+type branchCase struct {
+	t    testcase.Tree
+	init tCpu
+	branchData
+}
+
+func (bc branchCase) testBranch(op OpFunc, tag string) {
+	initCpu := bc.init
+	initCpu.setStatus(byte(bc.status), byte(1<<uint(bc.bit)))
+	expCpu := initCpu
+	expCpu.PC = bc.post
+	initCpu.am = instr.AddrMode{instr.Addr(bc.bit), instr.Addr(bc.offset),
+		instr.NoIndex}
+	initCpu.PC = bc.pre
+	op(&(initCpu.Cpu), &(initCpu.am))
+	bc.t.Run(fmt.Sprintf("%s(%d) %02x", tag, bc.bit, initCpu.ByteFromSreg()),
+		initCpu, expCpu)
+}
