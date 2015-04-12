@@ -68,7 +68,7 @@ func regPair(t testcase.Tree, init, exp testcase.Testable) {
 	t.Run("r1:r0,r1:r0", initTc, exp)
 }
 
-var addCases = [][]caseData{
+var addCases = [][]arithData{
 	{
 		{0x00, 0x01, 0x01, 0x02},
 		{0x01, 0x10, 0xf1, 0x01},
@@ -131,7 +131,7 @@ func TestAddition(t *testing.T) {
 		flagsOnOff, carryOnOff, regD5R5, addRespectCarry).Start(tCpu{})
 
 	adiw := func(t testcase.Tree, init, exp testcase.Testable) {
-		var cases = []caseData{
+		var cases = []arithData{
 			{0x00, 0x0000, 0x01, 0x0001},
 			{0x01, 0xffc3, 0x3e, 0x0001},
 			{0x02, 0x0000, 0x00, 0x0000},
@@ -148,7 +148,7 @@ func TestAddition(t *testing.T) {
 		flagsOnOff, carryOnOff, adiw).Start(tCpu{})
 }
 
-var subCases = [][]caseData{
+var subCases = [][]arithData{
 	{
 		{0x00, 0x01, 0x00, 0x01},
 		{0x01, 0x00, 0x90, 0x70},
@@ -225,7 +225,7 @@ func TestSubtraction(t *testing.T) {
 		flagsOnOff, carryOnOff, regD5R5, subRespectCarry).Start(tCpu{})
 
 	sbiw := func(t testcase.Tree, init, exp testcase.Testable) {
-		var cases = []caseData{
+		var cases = []arithData{
 			{0x00, 0x0001, 0x00, 0x0001},
 			{0x02, 0x0000, 0x00, 0x0000},
 			{0x14, 0x8000, 0x00, 0x8000},
@@ -241,7 +241,7 @@ func TestSubtraction(t *testing.T) {
 }
 
 func andAndi(t testcase.Tree, init, exp testcase.Testable) {
-	var andCases = []caseData{
+	var andCases = []arithData{
 		{0x00, 0x01, 0x01, 0x01},
 		{0x02, 0xaa, 0x55, 0x00},
 		{0x14, 0x80, 0x80, 0x80},
@@ -254,7 +254,7 @@ func andAndi(t testcase.Tree, init, exp testcase.Testable) {
 }
 
 func orOri(t testcase.Tree, init, exp testcase.Testable) {
-	var orCases = []caseData{
+	var orCases = []arithData{
 		{0x00, 0x01, 0x03, 0x03},
 		{0x02, 0x00, 0x00, 0x00},
 		{0x14, 0x80, 0x01, 0x81},
@@ -267,7 +267,7 @@ func orOri(t testcase.Tree, init, exp testcase.Testable) {
 }
 
 func eorEor(t testcase.Tree, init, exp testcase.Testable) {
-	var eorCases = []caseData{
+	var eorCases = []arithData{
 		{0x00, 0x01, 0x03, 0x02},
 		{0x02, 0xaa, 0xaa, 0x00},
 		{0x14, 0xaa, 0x55, 0xff},
@@ -288,7 +288,7 @@ func TestBoolean(t *testing.T) {
 }
 
 func mulMul(t testcase.Tree, init, exp testcase.Testable) {
-	var cases = []caseData{
+	var cases = []arithData{
 		{0x00, 0xff, 0x01, 0x00ff},
 		{0x00, 0x7f, 0x7f, 0x3f01},
 		{0x01, 0xff, 0xff, 0xfe01},
@@ -304,30 +304,30 @@ func mul34(t testcase.Tree, init, exp testcase.Testable) {
 	var opcases = []struct {
 		op   OpFunc
 		name string
-		c    []caseData
+		c    []arithData
 	}{
-		{Muls, "Muls", []caseData{
+		{Muls, "Muls", []arithData{
 			{0x00, 0xff, 0xff, 0x0001},
 			{0x00, 0x7f, 0x7f, 0x3f01},
 			{0x01, 0xff, 0x01, 0xffff},
 			{0x02, 0xff, 0x00, 0x0000}}},
-		{Mulsu, "Mulsu", []caseData{
+		{Mulsu, "Mulsu", []arithData{
 			{0x00, 0x01, 0xff, 0x00ff},
 			{0x00, 0x7f, 0x7f, 0x3f01},
 			{0x01, 0xff, 0xff, 0xff01},
 			{0x02, 0xff, 0x00, 0x0000}}},
-		{Fmul, "Fmul", []caseData{
+		{Fmul, "Fmul", []arithData{
 			{0x00, 0xff, 0x01, 0x01fe},
 			{0x00, 0x80, 0x80, 0x8000},
 			{0x01, 0xd0, 0xd0, 0x5200},
 			{0x01, 0xe0, 0xe0, 0x8800},
 			{0x02, 0xff, 0x00, 0x0000}}},
-		{Fmuls, "Fmuls", []caseData{
+		{Fmuls, "Fmuls", []arithData{
 			{0x00, 0x7f, 0x7f, 0x7e02},
 			{0x00, 0x80, 0x80, 0x8000},
 			{0x01, 0xff, 0x01, 0xfffe},
 			{0x02, 0xff, 0x00, 0x0000}}},
-		{Fmulsu, "Fmulsu", []caseData{
+		{Fmulsu, "Fmulsu", []arithData{
 			{0x00, 0x01, 0xff, 0x01fe},
 			{0x00, 0x7f, 0xc8, 0xc670},
 			{0x01, 0xff, 0xff, 0xfe02},
@@ -349,7 +349,7 @@ func TestMultiplication(t *testing.T) {
 
 func TestMov(t *testing.T) {
 	mov := func(t testcase.Tree, init, exp testcase.Testable) {
-		cases := []caseData{
+		cases := []arithData{
 			{0x00, 0x00, 0x10, 0x10},
 			{0x00, 0x10, 0x10, 0x10},
 		}
@@ -363,7 +363,7 @@ func TestMov(t *testing.T) {
 
 func TestMovw(t *testing.T) {
 	movw := func(t testcase.Tree, init, exp testcase.Testable) {
-		cases := []caseData{
+		cases := []arithData{
 			{0x00, 0x0000, 0x1234, 0x1234},
 			{0x00, 0x4321, 0x4321, 0x4321},
 		}
@@ -377,7 +377,7 @@ func TestMovw(t *testing.T) {
 
 func TestLdi(t *testing.T) {
 	ldi := func(t testcase.Tree, init, exp testcase.Testable) {
-		cases := []caseData{
+		cases := []arithData{
 			{0x00, 0x00, 0xff, 0xff},
 			{0x00, 0xff, 0x00, 0x00},
 		}
@@ -387,4 +387,126 @@ func TestLdi(t *testing.T) {
 		}
 	}
 	testcase.NewTree(t, "<-", flagsOnOff, ldi).Start(tCpu{})
+}
+
+// For the "RMW" instructions, we abuse the test mechanism for
+// two-register instructions by not setting up the address mode (which
+// defaults to R0 for source and dest).
+func rmwRMW(t testcase.Tree, init, exp testcase.Testable) {
+	var opcases = []struct {
+		op   OpFunc
+		name string
+		mask int
+		c    []arithData
+	}{
+		{Com, "Com", 0x1f, []arithData{
+			{0x01, 0x80, 0x80, 0x7f},
+			{0x03, 0xff, 0xff, 0x00},
+			{0x15, 0x00, 0x00, 0xff}}},
+		{Neg, "Neg", 0x3f, []arithData{
+			{0x01, 0x90, 0x90, 0x70},
+			{0x02, 0x00, 0x00, 0x00},
+			{0x0d, 0x80, 0x80, 0x80},
+			{0x15, 0x10, 0x10, 0xf0},
+			{0x21, 0x81, 0x81, 0x7f},
+			{0x35, 0x01, 0x01, 0xff}}},
+		{Swap, "Swap", 0x00, []arithData{
+			{0x00, 0xff, 0xff, 0xff},
+			{0x00, 0x00, 0x00, 0x00},
+			{0x00, 0x12, 0x12, 0x21}}},
+		{Dec, "Dec", 0x1e, []arithData{
+			{0x00, 0x02, 0x02, 0x01},
+			{0x02, 0x01, 0x01, 0x00},
+			{0x14, 0x00, 0x00, 0xff},
+			{0x18, 0x80, 0x80, 0x7f}}},
+		{Inc, "Inc", 0x1e, []arithData{
+			{0x00, 0x00, 0x00, 0x01},
+			{0x02, 0xff, 0xff, 0x00},
+			{0x0c, 0x7f, 0x7f, 0x80},
+			{0x14, 0x80, 0x80, 0x81}}},
+	}
+	for _, cases := range opcases {
+		for n, c := range cases.c {
+			ac := arithCase{t, init.(tCpu), cases.mask, c, n}
+			ac.testD5R5(cases.op, cases.name)
+		}
+	}
+}
+
+func rmwSR(t testcase.Tree, init, exp testcase.Testable) {
+	var opcases = []struct {
+		op   OpFunc
+		name string
+		c    []arithData
+	}{
+		{Asr, "Asr", []arithData{
+			{0x00, 0x02, 0x02, 0x01},
+			{0x02, 0x00, 0x00, 0x00},
+			{0x0c, 0x80, 0x80, 0xc0},
+			{0x15, 0x81, 0x81, 0xc0},
+			{0x19, 0x03, 0x03, 0x01},
+			{0x1b, 0x01, 0x01, 0x00}}},
+		{Lsr, "Lsr", []arithData{
+			{0x00, 0x02, 0x02, 0x01},
+			{0x02, 0x00, 0x00, 0x00},
+			{0x19, 0x03, 0x03, 0x01},
+			{0x1b, 0x01, 0x01, 0x00}}},
+	}
+	for _, cases := range opcases {
+		for n, c := range cases.c {
+			ac := arithCase{t, init.(tCpu), 0x1f, c, n}
+			ac.testD5R5(cases.op, cases.name)
+		}
+	}
+}
+
+func rmwROR(t testcase.Tree, init, exp testcase.Testable) {
+	var cases = [][]arithData{
+		{
+			{0x00, 0x02, 0x02, 0x01},
+			{0x02, 0x00, 0x00, 0x00},
+			{0x19, 0x03, 0x03, 0x01},
+			{0x1b, 0x01, 0x01, 0x00}},
+		{
+			{0x00, 0x00, 0x00, 0x80},
+			{0x19, 0x01, 0x01, 0x80}},
+	}
+	initTc := init.(tCpu)
+	cIdx := 0
+	if initTc.FlagC {
+		cIdx = 1
+	}
+
+	for n, c := range cases[cIdx] {
+		ac := arithCase{t, init.(tCpu), 0x1f, c, n}
+		ac.testD5R5(Ror, "Ror")
+	}
+}
+
+func TestRMW(t *testing.T) {
+	testcase.NewTree(t, "RMW", flagsOnOff, rmwRMW).Start(tCpu{})
+	testcase.NewTree(t, "RMW", flagsOnOff, carryOnOff, rmwSR).Start(tCpu{})
+}
+
+func testXXXX(t *testing.T) {
+	for status := 0; status < 64; status++ {
+	Loop:
+		for d := 0; d < 256; d++ {
+			res := (d >> 1)
+			res |= 0x80
+			s := 0
+			if (d & 0x1) != 0 {
+				s |= 1
+				s |= 8
+				s |= 0x10
+			}
+			if res == 0 {
+				s |= 2
+			}
+			if s == status {
+				t.Errorf("%02x %02x=%02x", s, d, res)
+				break Loop
+			}
+		}
+	}
 }

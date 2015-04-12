@@ -121,6 +121,10 @@ func Cpi(cpu *Cpu, am *instr.AddrMode) {
 	subtractionNoCarry(cpu, cpu.R[am.A1], int(am.A2))
 }
 
+func Neg(cpu *Cpu, am *instr.AddrMode) {
+	cpu.R[am.A1] = subtractionNoCarry(cpu, 0, cpu.R[am.A1])
+}
+
 func subtractionNoCarry(cpu *Cpu, d, r int) int {
 	r = ^r
 
@@ -305,4 +309,73 @@ func Movw(cpu *Cpu, am *instr.AddrMode) {
 
 func Ldi(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[am.A1] = int(am.A2)
+}
+
+func Com(cpu *Cpu, am *instr.AddrMode) {
+	res := ^cpu.R[am.A1] & 0xff
+	cpu.FlagC = true
+	cpu.FlagV = false
+	cpu.FlagZ = res == 0
+	cpu.FlagN = res >= 0x80
+	cpu.FlagS = cpu.FlagN
+	cpu.R[am.A1] = res
+}
+
+func Swap(cpu *Cpu, am *instr.AddrMode) {
+	val := cpu.R[am.A1]
+	cpu.R[am.A1] = ((val & 0xf) << 4) | ((val & 0xf0) >> 4)
+}
+
+func Dec(cpu *Cpu, am *instr.AddrMode) {
+	res := (cpu.R[am.A1] - 1) & 0xff
+	cpu.FlagV = res == 0x7f
+	cpu.FlagN = res >= 0x80
+	cpu.FlagS = cpu.FlagV != cpu.FlagN
+	cpu.FlagZ = res == 0
+	cpu.R[am.A1] = res
+}
+
+func Inc(cpu *Cpu, am *instr.AddrMode) {
+	res := (cpu.R[am.A1] + 1) & 0xff
+	cpu.FlagV = res == 0x80
+	cpu.FlagN = res >= 0x80
+	cpu.FlagS = cpu.FlagV != cpu.FlagN
+	cpu.FlagZ = res == 0
+	cpu.R[am.A1] = res
+}
+
+func Asr(cpu *Cpu, am *instr.AddrMode) {
+	val := cpu.R[am.A1]
+	res := (val >> 1) | (val & 0x80)
+	cpu.FlagC = (val & 0x1) != 0
+	cpu.FlagN = (val & 0x80) != 0
+	cpu.FlagZ = res == 0
+	cpu.FlagV = cpu.FlagN != cpu.FlagC
+	cpu.FlagS = cpu.FlagN != cpu.FlagV
+	cpu.R[am.A1] = res
+}
+
+func Lsr(cpu *Cpu, am *instr.AddrMode) {
+	val := cpu.R[am.A1]
+	res := val >> 1
+	cpu.FlagC = (val & 0x1) != 0
+	cpu.FlagN = false
+	cpu.FlagZ = res == 0
+	cpu.FlagV = cpu.FlagC
+	cpu.FlagS = cpu.FlagV
+	cpu.R[am.A1] = res
+}
+
+func Ror(cpu *Cpu, am *instr.AddrMode) {
+	val := cpu.R[am.A1]
+	res := val >> 1
+	if cpu.FlagC {
+		res |= 0x80
+	}
+	cpu.FlagC = (val & 0x1) != 0
+	cpu.FlagN = false
+	cpu.FlagZ = res == 0
+	cpu.FlagV = cpu.FlagC
+	cpu.FlagS = cpu.FlagV
+	cpu.R[am.A1] = res
 }

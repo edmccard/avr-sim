@@ -92,7 +92,7 @@ func (tc *tCpu) setStatus(expStatus, mask byte) {
 	tc.SregFromByte(status)
 }
 
-type caseData struct {
+type arithData struct {
 	status, v1, v2, res int
 }
 
@@ -100,7 +100,7 @@ type arithCase struct {
 	t    testcase.Tree
 	init tCpu
 	mask int
-	caseData
+	arithData
 	n int
 }
 
