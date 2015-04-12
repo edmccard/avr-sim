@@ -9,63 +9,63 @@ import (
 )
 
 // Branches with all flags initially set/all flags initially clear.
-func flagsOnOff(t testcase.Tree, init, exp testcase.Testable) {
+func flagsOnOff(tree testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
 	initTc.SregFromByte(0xff)
-	t.Run("SRff", initTc, exp)
+	tree.Run("SRff", initTc, exp)
 	initTc.SregFromByte(0x00)
-	t.Run("SR00", initTc, exp)
+	tree.Run("SR00", initTc, exp)
 }
 
 // Branches with carry flag set/carry flag clear.
-func carryOnOff(t testcase.Tree, init, exp testcase.Testable) {
+func carryOnOff(tree testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
 	initTc.FlagC = true
-	t.Run("C1", initTc, exp)
+	tree.Run("C1", initTc, exp)
 	initTc.FlagC = false
-	t.Run("C0", initTc, exp)
+	tree.Run("C0", initTc, exp)
 }
 
 // Branches with (d, d+1) and (d,d) as dest/source registers.
-func regD5R5(t testcase.Tree, init, exp testcase.Testable) {
+func regD5R5(tree testcase.Tree, init, exp testcase.Testable) {
 	d := instr.Addr(rand.Intn(32))
 	r := (d + 1) & 0x1f
 	initTc := init.(tCpu)
 	initTc.am = instr.AddrMode{d, r, instr.NoIndex}
-	t.Run(fmt.Sprintf("r%02d,r%02d", d, r), initTc, exp)
+	tree.Run(fmt.Sprintf("r%02d,r%02d", d, r), initTc, exp)
 	initTc.am = instr.AddrMode{d, d, instr.NoIndex}
-	t.Run(fmt.Sprintf("r%02d,r%02d", d, d), initTc, exp)
+	tree.Run(fmt.Sprintf("r%02d,r%02d", d, d), initTc, exp)
 }
 
 // Branches with various dest/source registers for Mul instruction.
-func reg5Mul(t testcase.Tree, init, exp testcase.Testable) {
+func reg5Mul(tree testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
 	regs := []struct {
 		d, r instr.Addr
 	}{{0, 1}, {0, 0}, {1, 1}, {1, 2}, {2, 3}}
 	for _, reg := range regs {
 		initTc.am = instr.AddrMode{reg.d, reg.r, instr.NoIndex}
-		t.Run(fmt.Sprintf("r%02d,r%02d", reg.r, reg.d), initTc, exp)
+		tree.Run(fmt.Sprintf("r%02d,r%02d", reg.r, reg.d), initTc, exp)
 	}
 }
 
 // Branches with (16,17) and (16,16) as d,r
 // for Muls/Mulsu/Fmul/Fmuls/Fmulsu.
-func reg34Mul(t testcase.Tree, init, exp testcase.Testable) {
+func reg34Mul(tree testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
 	initTc.am = instr.AddrMode{16, 17, instr.NoIndex}
-	t.Run("r16,r17", initTc, exp)
+	tree.Run("r16,r17", initTc, exp)
 	initTc.am = instr.AddrMode{16, 16, instr.NoIndex}
-	t.Run("r16,r16", initTc, exp)
+	tree.Run("r16,r16", initTc, exp)
 }
 
 // Branches with (1:0, 3:2) and (1:0, 1:0) as register pairs.
-func regPair(t testcase.Tree, init, exp testcase.Testable) {
+func regPair(tree testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
 	initTc.am = instr.AddrMode{0, 2, instr.NoIndex}
-	t.Run("r1:r0,r3:r2", initTc, exp)
+	tree.Run("r1:r0,r3:r2", initTc, exp)
 	initTc.am = instr.AddrMode{0, 0, instr.NoIndex}
-	t.Run("r1:r0,r1:r0", initTc, exp)
+	tree.Run("r1:r0,r1:r0", initTc, exp)
 }
 
 var addCases = [][]arithData{
@@ -104,14 +104,14 @@ var addCases = [][]arithData{
 	},
 }
 
-func addIgnoreCarry(t testcase.Tree, init, exp testcase.Testable) {
+func addIgnoreCarry(tree testcase.Tree, init, exp testcase.Testable) {
 	for n, c := range addCases[0] {
-		ac := arithCase{t, init.(tCpu), 0x3f, c, n}
+		ac := arithCase{tree, init.(tCpu), 0x3f, c, n}
 		ac.testD5R5(Add, "(ign.) Add")
 	}
 }
 
-func addRespectCarry(t testcase.Tree, init, exp testcase.Testable) {
+func addRespectCarry(tree testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
 	cIdx := 0
 	if initTc.FlagC {
@@ -119,7 +119,7 @@ func addRespectCarry(t testcase.Tree, init, exp testcase.Testable) {
 	}
 
 	for n, c := range addCases[cIdx] {
-		ac := arithCase{t, init.(tCpu), 0x3f, c, n}
+		ac := arithCase{tree, init.(tCpu), 0x3f, c, n}
 		ac.testD5R5(Adc, "(resp.) Adc")
 	}
 }
@@ -130,7 +130,7 @@ func TestAddition(t *testing.T) {
 	testcase.NewTree(t, "+",
 		flagsOnOff, carryOnOff, regD5R5, addRespectCarry).Start(tCpu{})
 
-	adiw := func(t testcase.Tree, init, exp testcase.Testable) {
+	adiw := func(tree testcase.Tree, init, exp testcase.Testable) {
 		var cases = []arithData{
 			{0x00, 0x0000, 0x01, 0x0001},
 			{0x01, 0xffc3, 0x3e, 0x0001},
@@ -140,7 +140,7 @@ func TestAddition(t *testing.T) {
 			{0x14, 0x8000, 0x00, 0x8000},
 		}
 		for n, c := range cases {
-			ac := arithCase{t, init.(tCpu), 0x1f, c, n}
+			ac := arithCase{tree, init.(tCpu), 0x1f, c, n}
 			ac.testDDK6(Adiw, "Adiw")
 		}
 	}
@@ -184,9 +184,9 @@ var subCases = [][]arithData{
 }
 
 // Tests Sub, Subi, Cp, Cpi with cases for each possible status outcome.
-func subIgnoreCarry(t testcase.Tree, init, exp testcase.Testable) {
+func subIgnoreCarry(tree testcase.Tree, init, exp testcase.Testable) {
 	for n, c := range subCases[0] {
-		acsub := arithCase{t, init.(tCpu), 0x3f, c, n}
+		acsub := arithCase{tree, init.(tCpu), 0x3f, c, n}
 		accp := acsub
 		accp.res = accp.v1
 		acsub.testD5R5(Sub, "(ign.) Sub")
@@ -197,7 +197,7 @@ func subIgnoreCarry(t testcase.Tree, init, exp testcase.Testable) {
 }
 
 // Tests Sbc, Cpc, Sbci with cases for each possible status outcome.
-func subRespectCarry(t testcase.Tree, init, exp testcase.Testable) {
+func subRespectCarry(tree testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
 	cIdx := 0
 	if initTc.FlagC {
@@ -205,7 +205,7 @@ func subRespectCarry(t testcase.Tree, init, exp testcase.Testable) {
 	}
 
 	for n, c := range subCases[cIdx] {
-		acsub := arithCase{t, init.(tCpu), 0x3f, c, n}
+		acsub := arithCase{tree, init.(tCpu), 0x3f, c, n}
 		accp := acsub
 		accp.res = accp.v1
 		if c.res == 0 {
@@ -224,7 +224,7 @@ func TestSubtraction(t *testing.T) {
 	testcase.NewTree(t, "-",
 		flagsOnOff, carryOnOff, regD5R5, subRespectCarry).Start(tCpu{})
 
-	sbiw := func(t testcase.Tree, init, exp testcase.Testable) {
+	sbiw := func(tree testcase.Tree, init, exp testcase.Testable) {
 		var cases = []arithData{
 			{0x00, 0x0001, 0x00, 0x0001},
 			{0x02, 0x0000, 0x00, 0x0000},
@@ -233,47 +233,47 @@ func TestSubtraction(t *testing.T) {
 			{0x18, 0x8000, 0x01, 0x7fff},
 		}
 		for n, c := range cases {
-			ac := arithCase{t, init.(tCpu), 0x1f, c, n}
+			ac := arithCase{tree, init.(tCpu), 0x1f, c, n}
 			ac.testDDK6(Sbiw, "Sbiw")
 		}
 	}
 	testcase.NewTree(t, "-", flagsOnOff, carryOnOff, sbiw).Start(tCpu{})
 }
 
-func andAndi(t testcase.Tree, init, exp testcase.Testable) {
+func andAndi(tree testcase.Tree, init, exp testcase.Testable) {
 	var andCases = []arithData{
 		{0x00, 0x01, 0x01, 0x01},
 		{0x02, 0xaa, 0x55, 0x00},
 		{0x14, 0x80, 0x80, 0x80},
 	}
 	for n, c := range andCases {
-		ac := arithCase{t, init.(tCpu), 0x1e, c, n}
+		ac := arithCase{tree, init.(tCpu), 0x1e, c, n}
 		ac.testD5R5(And, "And")
 		ac.testD4K8(Andi, "Andi")
 	}
 }
 
-func orOri(t testcase.Tree, init, exp testcase.Testable) {
+func orOri(tree testcase.Tree, init, exp testcase.Testable) {
 	var orCases = []arithData{
 		{0x00, 0x01, 0x03, 0x03},
 		{0x02, 0x00, 0x00, 0x00},
 		{0x14, 0x80, 0x01, 0x81},
 	}
 	for n, c := range orCases {
-		ac := arithCase{t, init.(tCpu), 0x1e, c, n}
+		ac := arithCase{tree, init.(tCpu), 0x1e, c, n}
 		ac.testD5R5(Or, "Or")
 		ac.testD4K8(Ori, "Ori")
 	}
 }
 
-func eorEor(t testcase.Tree, init, exp testcase.Testable) {
+func eorEor(tree testcase.Tree, init, exp testcase.Testable) {
 	var eorCases = []arithData{
 		{0x00, 0x01, 0x03, 0x02},
 		{0x02, 0xaa, 0xaa, 0x00},
 		{0x14, 0xaa, 0x55, 0xff},
 	}
 	for n, c := range eorCases {
-		ac := arithCase{t, init.(tCpu), 0x1e, c, n}
+		ac := arithCase{tree, init.(tCpu), 0x1e, c, n}
 		ac.testD5R5(Eor, "Eor")
 	}
 }
@@ -287,7 +287,7 @@ func TestBoolean(t *testing.T) {
 		flagsOnOff, regD5R5, eorEor).Start(tCpu{})
 }
 
-func mulMul(t testcase.Tree, init, exp testcase.Testable) {
+func mulMul(tree testcase.Tree, init, exp testcase.Testable) {
 	var cases = []arithData{
 		{0x00, 0xff, 0x01, 0x00ff},
 		{0x00, 0x7f, 0x7f, 0x3f01},
@@ -295,12 +295,12 @@ func mulMul(t testcase.Tree, init, exp testcase.Testable) {
 		{0x02, 0xff, 0x00, 0x0000},
 	}
 	for n, c := range cases {
-		ac := arithCase{t, init.(tCpu), 0x03, c, n}
+		ac := arithCase{tree, init.(tCpu), 0x03, c, n}
 		ac.testMul(Mul, "Mul")
 	}
 }
 
-func mul34(t testcase.Tree, init, exp testcase.Testable) {
+func mul34(tree testcase.Tree, init, exp testcase.Testable) {
 	var opcases = []struct {
 		op   OpFunc
 		name string
@@ -336,7 +336,7 @@ func mul34(t testcase.Tree, init, exp testcase.Testable) {
 	}
 	for _, cases := range opcases {
 		for n, c := range cases.c {
-			ac := arithCase{t, init.(tCpu), 0x03, c, n}
+			ac := arithCase{tree, init.(tCpu), 0x03, c, n}
 			ac.testMul(cases.op, cases.name)
 		}
 	}
@@ -348,13 +348,13 @@ func TestMultiplication(t *testing.T) {
 }
 
 func TestMov(t *testing.T) {
-	mov := func(t testcase.Tree, init, exp testcase.Testable) {
+	mov := func(tree testcase.Tree, init, exp testcase.Testable) {
 		cases := []arithData{
 			{0x00, 0x00, 0x10, 0x10},
 			{0x00, 0x10, 0x10, 0x10},
 		}
 		for n, c := range cases {
-			ac := arithCase{t, init.(tCpu), 0x00, c, n}
+			ac := arithCase{tree, init.(tCpu), 0x00, c, n}
 			ac.testD5R5(Mov, "Mov")
 		}
 	}
@@ -362,13 +362,13 @@ func TestMov(t *testing.T) {
 }
 
 func TestMovw(t *testing.T) {
-	movw := func(t testcase.Tree, init, exp testcase.Testable) {
+	movw := func(tree testcase.Tree, init, exp testcase.Testable) {
 		cases := []arithData{
 			{0x00, 0x0000, 0x1234, 0x1234},
 			{0x00, 0x4321, 0x4321, 0x4321},
 		}
 		for n, c := range cases {
-			ac := arithCase{t, init.(tCpu), 0x00, c, n}
+			ac := arithCase{tree, init.(tCpu), 0x00, c, n}
 			ac.testMovw()
 		}
 	}
@@ -376,13 +376,13 @@ func TestMovw(t *testing.T) {
 }
 
 func TestLdi(t *testing.T) {
-	ldi := func(t testcase.Tree, init, exp testcase.Testable) {
+	ldi := func(tree testcase.Tree, init, exp testcase.Testable) {
 		cases := []arithData{
 			{0x00, 0x00, 0xff, 0xff},
 			{0x00, 0xff, 0x00, 0x00},
 		}
 		for n, c := range cases {
-			ac := arithCase{t, init.(tCpu), 0x00, c, n}
+			ac := arithCase{tree, init.(tCpu), 0x00, c, n}
 			ac.testD4K8(Ldi, "Ldi")
 		}
 	}
@@ -392,7 +392,7 @@ func TestLdi(t *testing.T) {
 // For the "RMW" instructions, we abuse the test mechanism for
 // two-register instructions by not setting up the address mode (which
 // defaults to R0 for source and dest).
-func rmwRMW(t testcase.Tree, init, exp testcase.Testable) {
+func rmwRMW(tree testcase.Tree, init, exp testcase.Testable) {
 	var opcases = []struct {
 		op   OpFunc
 		name string
@@ -427,13 +427,13 @@ func rmwRMW(t testcase.Tree, init, exp testcase.Testable) {
 	}
 	for _, cases := range opcases {
 		for n, c := range cases.c {
-			ac := arithCase{t, init.(tCpu), cases.mask, c, n}
+			ac := arithCase{tree, init.(tCpu), cases.mask, c, n}
 			ac.testD5R5(cases.op, cases.name)
 		}
 	}
 }
 
-func rmwSR(t testcase.Tree, init, exp testcase.Testable) {
+func rmwSR(tree testcase.Tree, init, exp testcase.Testable) {
 	var opcases = []struct {
 		op   OpFunc
 		name string
@@ -454,13 +454,13 @@ func rmwSR(t testcase.Tree, init, exp testcase.Testable) {
 	}
 	for _, cases := range opcases {
 		for n, c := range cases.c {
-			ac := arithCase{t, init.(tCpu), 0x1f, c, n}
+			ac := arithCase{tree, init.(tCpu), 0x1f, c, n}
 			ac.testD5R5(cases.op, cases.name)
 		}
 	}
 }
 
-func rmwROR(t testcase.Tree, init, exp testcase.Testable) {
+func rmwROR(tree testcase.Tree, init, exp testcase.Testable) {
 	var cases = [][]arithData{
 		{
 			{0x00, 0x02, 0x02, 0x01},
@@ -478,7 +478,7 @@ func rmwROR(t testcase.Tree, init, exp testcase.Testable) {
 	}
 
 	for n, c := range cases[cIdx] {
-		ac := arithCase{t, init.(tCpu), 0x1f, c, n}
+		ac := arithCase{tree, init.(tCpu), 0x1f, c, n}
 		ac.testD5R5(Ror, "Ror")
 	}
 }
@@ -486,27 +486,4 @@ func rmwROR(t testcase.Tree, init, exp testcase.Testable) {
 func TestRMW(t *testing.T) {
 	testcase.NewTree(t, "RMW", flagsOnOff, rmwRMW).Start(tCpu{})
 	testcase.NewTree(t, "RMW", flagsOnOff, carryOnOff, rmwSR).Start(tCpu{})
-}
-
-func testXXXX(t *testing.T) {
-	for status := 0; status < 64; status++ {
-	Loop:
-		for d := 0; d < 256; d++ {
-			res := (d >> 1)
-			res |= 0x80
-			s := 0
-			if (d & 0x1) != 0 {
-				s |= 1
-				s |= 8
-				s |= 0x10
-			}
-			if res == 0 {
-				s |= 2
-			}
-			if s == status {
-				t.Errorf("%02x %02x=%02x", s, d, res)
-				break Loop
-			}
-		}
-	}
 }
