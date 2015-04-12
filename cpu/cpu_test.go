@@ -156,7 +156,7 @@ func (ac arithCase) testDDK6(op OpFunc, tag string) {
 	expCpu.R[24] = ac.res & 0xff
 	expCpu.R[25] = ac.res >> 8
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
-	initCpu:= ac.init
+	initCpu := ac.init
 	initCpu.R[24] = ac.v1 & 0xff
 	initCpu.R[25] = ac.v1 >> 8
 	initCpu.am = instr.AddrMode{24, instr.Addr(ac.v2), instr.NoIndex}
