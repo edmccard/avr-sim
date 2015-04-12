@@ -374,3 +374,17 @@ func TestMovw(t *testing.T) {
 	}
 	testcase.NewTree(t, "<-", flagsOnOff, regPair, movw).Start(tCpu{})
 }
+
+func TestLdi(t *testing.T) {
+	ldi := func(t testcase.Tree, init, exp testcase.Testable) {
+		cases := []caseData{
+			{0x00, 0x00, 0xff, 0xff},
+			{0x00, 0xff, 0x00, 0x00},
+		}
+		for n, c := range cases {
+			ac := arithCase{t, init.(tCpu), 0x00, c, n}
+			ac.testD4K8(Ldi, "Ldi")
+		}
+	}
+	testcase.NewTree(t, "<-", flagsOnOff, ldi).Start(tCpu{})
+}

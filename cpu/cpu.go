@@ -302,3 +302,7 @@ func Movw(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[am.A1] = cpu.R[am.A2]
 	cpu.R[am.A1+1] = cpu.R[am.A2+1]
 }
+
+func Ldi(cpu *Cpu, am *instr.AddrMode) {
+	cpu.R[am.A1] = int(am.A2)
+}
