@@ -293,3 +293,12 @@ func Fmulsu(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[0] = res & 0xff
 	cpu.R[1] = res >> 8
 }
+
+func Mov(cpu *Cpu, am *instr.AddrMode) {
+	cpu.R[am.A1] = cpu.R[am.A2]
+}
+
+func Movw(cpu *Cpu, am *instr.AddrMode) {
+	cpu.R[am.A1] = cpu.R[am.A2]
+	cpu.R[am.A1+1] = cpu.R[am.A2+1]
+}

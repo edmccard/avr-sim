@@ -51,12 +51,21 @@ func reg5Mul(t testcase.Tree, init, exp testcase.Testable) {
 
 // Branches with (16,17) and (16,16) as d,r
 // for Muls/Mulsu/Fmul/Fmuls/Fmulsu.
-func reg4Mul(t testcase.Tree, init, exp testcase.Testable) {
+func reg34Mul(t testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
 	initTc.am = instr.AddrMode{16, 17, instr.NoIndex}
 	t.Run("r16,r17", initTc, exp)
 	initTc.am = instr.AddrMode{16, 16, instr.NoIndex}
 	t.Run("r16,r16", initTc, exp)
+}
+
+// Branches with (1:0, 3:2) and (1:0, 1:0) as register pairs.
+func regPair(t testcase.Tree, init, exp testcase.Testable) {
+	initTc := init.(tCpu)
+	initTc.am = instr.AddrMode{0, 2, instr.NoIndex}
+	t.Run("r1:r0,r3:r2", initTc, exp)
+	initTc.am = instr.AddrMode{0, 0, instr.NoIndex}
+	t.Run("r1:r0,r1:r0", initTc, exp)
 }
 
 var addCases = [][]caseData{
@@ -291,7 +300,7 @@ func mulMul(t testcase.Tree, init, exp testcase.Testable) {
 	}
 }
 
-func mul4(t testcase.Tree, init, exp testcase.Testable) {
+func mul34(t testcase.Tree, init, exp testcase.Testable) {
 	var opcases = []struct {
 		op   OpFunc
 		name string
@@ -335,5 +344,33 @@ func mul4(t testcase.Tree, init, exp testcase.Testable) {
 
 func TestMultiplication(t *testing.T) {
 	testcase.NewTree(t, "*", flagsOnOff, reg5Mul, mulMul).Start(tCpu{})
-	testcase.NewTree(t, "*", flagsOnOff, reg4Mul, mul4).Start(tCpu{})
+	testcase.NewTree(t, "*", flagsOnOff, reg34Mul, mul34).Start(tCpu{})
+}
+
+func TestMov(t *testing.T) {
+	mov := func(t testcase.Tree, init, exp testcase.Testable) {
+		cases := []caseData{
+			{0x00, 0x00, 0x10, 0x10},
+			{0x00, 0x10, 0x10, 0x10},
+		}
+		for n, c := range cases {
+			ac := arithCase{t, init.(tCpu), 0x00, c, n}
+			ac.testD5R5(Mov, "Mov")
+		}
+	}
+	testcase.NewTree(t, "<-", flagsOnOff, regD5R5, mov).Start(tCpu{})
+}
+
+func TestMovw(t *testing.T) {
+	movw := func(t testcase.Tree, init, exp testcase.Testable) {
+		cases := []caseData{
+			{0x00, 0x0000, 0x1234, 0x1234},
+			{0x00, 0x4321, 0x4321, 0x4321},
+		}
+		for n, c := range cases {
+			ac := arithCase{t, init.(tCpu), 0x00, c, n}
+			ac.testMovw()
+		}
+	}
+	testcase.NewTree(t, "<-", flagsOnOff, regPair, movw).Start(tCpu{})
 }

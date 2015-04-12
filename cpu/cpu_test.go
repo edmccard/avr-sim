@@ -163,3 +163,23 @@ func (ac arithCase) testDDK6(op OpFunc, tag string) {
 	op(&(initCpu.Cpu), &(initCpu.am))
 	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
 }
+
+func (ac arithCase) testMovw() {
+	initCpu := ac.init
+	d := initCpu.am.A1
+	r := initCpu.am.A2
+	if d == r && ac.v1 != ac.v2 {
+		return
+	}
+	initCpu.R[r] = ac.v2 & 0xff
+	initCpu.R[r+1] = ac.v2 >> 8
+	initCpu.R[d] = ac.v1 & 0xff
+	initCpu.R[d+1] = ac.v1 >> 8
+	expCpu := ac.init
+	expCpu.R[r] = ac.v2 & 0xff
+	expCpu.R[r+1] = ac.v2 >> 8
+	expCpu.R[d] = ac.res & 0xff
+	expCpu.R[d+1] = ac.res >> 8
+	Movw(&(initCpu.Cpu), &(initCpu.am))
+	ac.t.Run(fmt.Sprintf("Movw [%d]", ac.n), initCpu, expCpu)
+}
