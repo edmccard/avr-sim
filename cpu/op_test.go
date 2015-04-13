@@ -68,6 +68,15 @@ func regPair(tree testcase.Tree, init, exp testcase.Testable) {
 	tree.Run("r1:r0,r1:r0", initTc, exp)
 }
 
+// Branches with 0-7 as bit number.
+func bitNum(tree testcase.Tree, init, exp testcase.Testable) {
+	for bit := 0; bit < 7; bit++ {
+		initTc := init.(tCpu)
+		initTc.am = instr.AddrMode{instr.Addr(bit), 0, instr.NoIndex}
+		tree.Run(fmt.Sprintf("b%d", bit), initTc, exp)
+	}
+}
+
 var addCases = [][]arithData{
 	{
 		{0x00, 0x01, 0x01, 0x02},
@@ -490,29 +499,87 @@ func TestRMW(t *testing.T) {
 
 func TestBranch(t *testing.T) {
 	brbs := func(tree testcase.Tree, init, exp testcase.Testable) {
-		for bit := 0; bit < 7; bit++ {
-			// Flag clear, no branch
-			bc := branchCase{tree, init.(tCpu),
-				branchData{bit, 0x00, 0x3f, 0x1001, 0x1001}}
-			bc.testBranch(Brbs, "Brbs")
-			// Flag set, branch
-			bc = branchCase{tree, init.(tCpu),
-				branchData{bit, 0xff, 0x3f, 0x1001, 0x1040}}
-			bc.testBranch(Brbs, "Brbs")
-		}
+		// Flag clear, no branch
+		bc := branchCase{0x00, 0x3f, 0x1001, 0x1001}
+		bc.testBranch(tree, init.(tCpu), Brbs, "Brbs")
+		// Flag set, branch
+		bc = branchCase{0xff, 0x3f, 0x1001, 0x1040}
+		bc.testBranch(tree, init.(tCpu), Brbs, "Brbs")
 	}
 	brbc := func(tree testcase.Tree, init, exp testcase.Testable) {
-		for bit := 0; bit < 7; bit++ {
-			// Flag clear, branch
-			bc := branchCase{tree, init.(tCpu),
-				branchData{bit, 0x00, 0x3f, 0x1001, 0x1040}}
-			bc.testBranch(Brbc, "Brbc")
-			// Flag set, no branch
-			bc = branchCase{tree, init.(tCpu),
-				branchData{bit, 0xff, 0x3f, 0x1001, 0x1001}}
-			bc.testBranch(Brbc, "Brbc")
-		}
+		// Flag clear, branch
+		bc := branchCase{0x00, 0x3f, 0x1001, 0x1040}
+		bc.testBranch(tree, init.(tCpu), Brbc, "Brbc")
+		// Flag set, no branch
+		bc = branchCase{0xff, 0x3f, 0x1001, 0x1001}
+		bc.testBranch(tree, init.(tCpu), Brbc, "Brbc")
 	}
-	testcase.NewTree(t, "BR", flagsOnOff, brbs).Start(tCpu{})
-	testcase.NewTree(t, "BR", flagsOnOff, brbc).Start(tCpu{})
+	testcase.NewTree(t, "BR", flagsOnOff, bitNum, brbs).Start(tCpu{})
+	testcase.NewTree(t, "BR", flagsOnOff, bitNum, brbc).Start(tCpu{})
+}
+
+func TestFlag(t *testing.T) {
+	flag := func(tree testcase.Tree, init, exp testcase.Testable) {
+		start := init.(tCpu)
+		bit := uint(start.am.A1)
+		mask := byte(1 << bit)
+
+		expCpu := start
+		initCpu := start
+		expCpu.setStatus(0xff, mask)
+		Bset(&(initCpu.Cpu), &(initCpu.am))
+		tree.Run("Bset", initCpu, expCpu)
+
+		expCpu = start
+		initCpu = start
+		expCpu.setStatus(0x00, mask)
+		Bclr(&(initCpu.Cpu), &(initCpu.am))
+		tree.Run("Blcr", initCpu, expCpu)
+	}
+	testcase.NewTree(t, "FLAG", flagsOnOff, bitNum, flag).Start(tCpu{})
+}
+
+func TestBldBst(t *testing.T) {
+	bst := func(tree testcase.Tree, init, exp testcase.Testable) {
+		start := init.(tCpu)
+		bit := uint(start.am.A1)
+		start.R[0] = (1 << bit)
+		start.R[1] = ^(1 << bit)
+
+		expCpu := start
+		initCpu := start
+		expCpu.FlagT = true
+		initCpu.am.A2 = 0
+		Bst(&(initCpu.Cpu), &(initCpu.am))
+		tree.Run("Bst 1", initCpu, expCpu)
+
+		expCpu = start
+		initCpu = start
+		expCpu.FlagT = false
+		initCpu.am.A2 = 1
+		Bst(&(initCpu.Cpu), &(initCpu.am))
+		tree.Run("Bst 0", initCpu, expCpu)
+	}
+	bld := func(tree testcase.Tree, init, exp testcase.Testable) {
+		start := init.(tCpu)
+		bit := uint(start.am.A1)
+
+		initCpu := start
+		initCpu.FlagT = true
+		initCpu.R[0] = 0
+		expCpu := initCpu
+		expCpu.R[0] = 1 << bit
+		Bld(&(initCpu.Cpu), &(initCpu.am))
+		tree.Run("Bld 1", initCpu, expCpu)
+
+		initCpu = start
+		initCpu.FlagT = false
+		initCpu.R[0] = 0xff
+		expCpu = initCpu
+		expCpu.R[0] = ^(1 << bit) & 0xff
+		Bld(&(initCpu.Cpu), &(initCpu.am))
+		tree.Run("Bld 0", initCpu, expCpu)
+	}
+	testcase.NewTree(t, "T", flagsOnOff, bitNum, bst).Start(tCpu{})
+	testcase.NewTree(t, "T", flagsOnOff, bitNum, bld).Start(tCpu{})
 }

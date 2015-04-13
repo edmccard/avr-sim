@@ -393,3 +393,29 @@ func Brbc(cpu *Cpu, am *instr.AddrMode) {
 		cpu.PC += int(am.A2)
 	}
 }
+
+func Bset(cpu *Cpu, am *instr.AddrMode) {
+	s := cpu.ByteFromSreg()
+	s |= (1 << uint(am.A1))
+	cpu.SregFromByte(s)
+}
+
+func Bclr(cpu *Cpu, am *instr.AddrMode) {
+	s := cpu.ByteFromSreg()
+	s &= ^(1 << uint(am.A1))
+	cpu.SregFromByte(s)
+}
+
+func Bst(cpu *Cpu, am *instr.AddrMode) {
+	val := cpu.R[am.A2]
+	cpu.FlagT = (val & (1 << uint(am.A1))) != 0
+}
+
+func Bld(cpu *Cpu, am *instr.AddrMode) {
+	bit := uint(am.A1)
+	if cpu.FlagT {
+		cpu.R[am.A2] |= (1 << bit)
+	} else {
+		cpu.R[am.A2] &= ^(1 << bit) & 0xff
+	}
+}

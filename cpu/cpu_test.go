@@ -184,25 +184,20 @@ func (ac arithCase) testMovw() {
 	ac.t.Run(fmt.Sprintf("Movw [%d]", ac.n), initCpu, expCpu)
 }
 
-type branchData struct {
-	bit, status, offset, pre, post int
-}
-
 type branchCase struct {
-	t    testcase.Tree
-	init tCpu
-	branchData
+	status, offset, pre, post int
 }
 
-func (bc branchCase) testBranch(op OpFunc, tag string) {
-	initCpu := bc.init
-	initCpu.setStatus(byte(bc.status), byte(1<<uint(bc.bit)))
-	expCpu := initCpu
-	expCpu.PC = bc.post
-	initCpu.am = instr.AddrMode{instr.Addr(bc.bit), instr.Addr(bc.offset),
-		instr.NoIndex}
-	initCpu.PC = bc.pre
-	op(&(initCpu.Cpu), &(initCpu.am))
-	bc.t.Run(fmt.Sprintf("%s(%d) %02x", tag, bc.bit, initCpu.ByteFromSreg()),
-		initCpu, expCpu)
+func (bc branchCase) testBranch(t testcase.Tree, init tCpu, op OpFunc,
+	tag string) {
+
+	bit := init.am.A1
+	init.setStatus(byte(bc.status), byte(1<<uint(bit)))
+	status := init.ByteFromSreg()
+	exp := init
+	exp.PC = bc.post
+	init.am.A2 = instr.Addr(bc.offset)
+	init.PC = bc.pre
+	op(&(init.Cpu), &(init.am))
+	t.Run(fmt.Sprintf("%s(%d) %02x", tag, bit, status), init, exp)
 }
