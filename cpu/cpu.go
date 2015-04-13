@@ -55,13 +55,13 @@ func (c *Cpu) ByteFromSreg() (b byte) {
 	return
 }
 
-type OpFunc func(*Cpu, *instr.AddrMode)
+type OpFunc func(*Cpu, *instr.AddrMode, Memory)
 
-func Adc(cpu *Cpu, am *instr.AddrMode) {
+func Adc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	addition(cpu, am, cpu.FlagC)
 }
 
-func Add(cpu *Cpu, am *instr.AddrMode) {
+func Add(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	addition(cpu, am, false)
 }
 
@@ -88,7 +88,7 @@ func addition(cpu *Cpu, am *instr.AddrMode, carry bool) {
 	cpu.R[am.A1] = res
 }
 
-func Adiw(cpu *Cpu, am *instr.AddrMode) {
+func Adiw(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	d := cpu.R[am.A1] | (cpu.R[am.A1+1] << 8)
 	k := int(am.A2)
 
@@ -105,23 +105,23 @@ func Adiw(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[am.A1+1] = res >> 8
 }
 
-func Sub(cpu *Cpu, am *instr.AddrMode) {
+func Sub(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.R[am.A1] = subtractionNoCarry(cpu, cpu.R[am.A1], cpu.R[am.A2])
 }
 
-func Subi(cpu *Cpu, am *instr.AddrMode) {
+func Subi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.R[am.A1] = subtractionNoCarry(cpu, cpu.R[am.A1], int(am.A2))
 }
 
-func Cp(cpu *Cpu, am *instr.AddrMode) {
+func Cp(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	subtractionNoCarry(cpu, cpu.R[am.A1], cpu.R[am.A2])
 }
 
-func Cpi(cpu *Cpu, am *instr.AddrMode) {
+func Cpi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	subtractionNoCarry(cpu, cpu.R[am.A1], int(am.A2))
 }
 
-func Neg(cpu *Cpu, am *instr.AddrMode) {
+func Neg(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.R[am.A1] = subtractionNoCarry(cpu, 0, cpu.R[am.A1])
 }
 
@@ -143,15 +143,15 @@ func subtractionNoCarry(cpu *Cpu, d, r int) int {
 	return res
 }
 
-func Sbc(cpu *Cpu, am *instr.AddrMode) {
+func Sbc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.R[am.A1] = subtractionCarry(cpu, cpu.R[am.A1], cpu.R[am.A2], cpu.FlagC)
 }
 
-func Sbci(cpu *Cpu, am *instr.AddrMode) {
+func Sbci(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.R[am.A1] = subtractionCarry(cpu, cpu.R[am.A1], int(am.A2), cpu.FlagC)
 }
 
-func Cpc(cpu *Cpu, am *instr.AddrMode) {
+func Cpc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	subtractionCarry(cpu, cpu.R[am.A1], cpu.R[am.A2], cpu.FlagC)
 }
 
@@ -179,7 +179,7 @@ func subtractionCarry(cpu *Cpu, d, r int, carry bool) int {
 	return res
 }
 
-func Sbiw(cpu *Cpu, am *instr.AddrMode) {
+func Sbiw(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	d := cpu.R[am.A1] | (cpu.R[am.A1+1] << 8)
 	k := int(am.A2)
 
@@ -196,11 +196,11 @@ func Sbiw(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[am.A1+1] = res >> 8
 }
 
-func And(cpu *Cpu, am *instr.AddrMode) {
+func And(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.R[am.A1] = boolAnd(cpu, cpu.R[am.A1], cpu.R[am.A2])
 }
 
-func Andi(cpu *Cpu, am *instr.AddrMode) {
+func Andi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.R[am.A1] = boolAnd(cpu, cpu.R[am.A1], int(am.A2))
 }
 
@@ -213,11 +213,11 @@ func boolAnd(cpu *Cpu, d, r int) int {
 	return res
 }
 
-func Or(cpu *Cpu, am *instr.AddrMode) {
+func Or(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.R[am.A1] = boolOr(cpu, cpu.R[am.A1], cpu.R[am.A2])
 }
 
-func Ori(cpu *Cpu, am *instr.AddrMode) {
+func Ori(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.R[am.A1] = boolOr(cpu, cpu.R[am.A1], int(am.A2))
 }
 
@@ -230,7 +230,7 @@ func boolOr(cpu *Cpu, d, r int) int {
 	return res
 }
 
-func Eor(cpu *Cpu, am *instr.AddrMode) {
+func Eor(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	res := cpu.R[am.A1] ^ cpu.R[am.A2]
 	cpu.FlagV = false
 	cpu.FlagN = res >= 0x80
@@ -239,7 +239,7 @@ func Eor(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[am.A1] = res
 }
 
-func Mul(cpu *Cpu, am *instr.AddrMode) {
+func Mul(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	res := cpu.R[am.A1] * cpu.R[am.A2]
 	cpu.FlagC = res >= 0x8000
 	cpu.FlagZ = res == 0
@@ -247,7 +247,7 @@ func Mul(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[1] = res >> 8
 }
 
-func Fmul(cpu *Cpu, am *instr.AddrMode) {
+func Fmul(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	res := cpu.R[am.A1] * cpu.R[am.A2]
 	cpu.FlagC = res >= 0x8000
 	res = (res << 1) & 0xffff
@@ -256,7 +256,7 @@ func Fmul(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[1] = res >> 8
 }
 
-func Muls(cpu *Cpu, am *instr.AddrMode) {
+func Muls(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	d := int8(cpu.R[am.A1])
 	r := int8(cpu.R[am.A2])
 	res := (int(d) * int(r)) & 0xffff
@@ -266,7 +266,7 @@ func Muls(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[1] = res >> 8
 }
 
-func Fmuls(cpu *Cpu, am *instr.AddrMode) {
+func Fmuls(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	d := int8(cpu.R[am.A1])
 	r := int8(cpu.R[am.A2])
 	res := (int(d) * int(r)) & 0xffff
@@ -277,7 +277,7 @@ func Fmuls(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[1] = res >> 8
 }
 
-func Mulsu(cpu *Cpu, am *instr.AddrMode) {
+func Mulsu(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	d := int8(cpu.R[am.A1])
 	r := cpu.R[am.A2]
 	res := (int(d) * int(r)) & 0xffff
@@ -287,7 +287,7 @@ func Mulsu(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[1] = res >> 8
 }
 
-func Fmulsu(cpu *Cpu, am *instr.AddrMode) {
+func Fmulsu(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	d := int8(cpu.R[am.A1])
 	r := cpu.R[am.A2]
 	res := (int(d) * int(r)) & 0xffff
@@ -298,20 +298,20 @@ func Fmulsu(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[1] = res >> 8
 }
 
-func Mov(cpu *Cpu, am *instr.AddrMode) {
+func Mov(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.R[am.A1] = cpu.R[am.A2]
 }
 
-func Movw(cpu *Cpu, am *instr.AddrMode) {
+func Movw(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.R[am.A1] = cpu.R[am.A2]
 	cpu.R[am.A1+1] = cpu.R[am.A2+1]
 }
 
-func Ldi(cpu *Cpu, am *instr.AddrMode) {
+func Ldi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.R[am.A1] = int(am.A2)
 }
 
-func Com(cpu *Cpu, am *instr.AddrMode) {
+func Com(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	res := ^cpu.R[am.A1] & 0xff
 	cpu.FlagC = true
 	cpu.FlagV = false
@@ -321,12 +321,12 @@ func Com(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[am.A1] = res
 }
 
-func Swap(cpu *Cpu, am *instr.AddrMode) {
+func Swap(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	val := cpu.R[am.A1]
 	cpu.R[am.A1] = ((val & 0xf) << 4) | ((val & 0xf0) >> 4)
 }
 
-func Dec(cpu *Cpu, am *instr.AddrMode) {
+func Dec(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	res := (cpu.R[am.A1] - 1) & 0xff
 	cpu.FlagV = res == 0x7f
 	cpu.FlagN = res >= 0x80
@@ -335,7 +335,7 @@ func Dec(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[am.A1] = res
 }
 
-func Inc(cpu *Cpu, am *instr.AddrMode) {
+func Inc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	res := (cpu.R[am.A1] + 1) & 0xff
 	cpu.FlagV = res == 0x80
 	cpu.FlagN = res >= 0x80
@@ -344,7 +344,7 @@ func Inc(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[am.A1] = res
 }
 
-func Asr(cpu *Cpu, am *instr.AddrMode) {
+func Asr(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	val := cpu.R[am.A1]
 	res := (val >> 1) | (val & 0x80)
 	cpu.FlagC = (val & 0x1) != 0
@@ -355,7 +355,7 @@ func Asr(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[am.A1] = res
 }
 
-func Lsr(cpu *Cpu, am *instr.AddrMode) {
+func Lsr(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	val := cpu.R[am.A1]
 	res := val >> 1
 	cpu.FlagC = (val & 0x1) != 0
@@ -366,7 +366,7 @@ func Lsr(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[am.A1] = res
 }
 
-func Ror(cpu *Cpu, am *instr.AddrMode) {
+func Ror(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	val := cpu.R[am.A1]
 	res := val >> 1
 	if cpu.FlagC {
@@ -380,38 +380,38 @@ func Ror(cpu *Cpu, am *instr.AddrMode) {
 	cpu.R[am.A1] = res
 }
 
-func Brbs(cpu *Cpu, am *instr.AddrMode) {
+func Brbs(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	s := cpu.ByteFromSreg()
 	if (s & (1 << uint(am.A1))) != 0 {
 		cpu.PC += int(am.A2)
 	}
 }
 
-func Brbc(cpu *Cpu, am *instr.AddrMode) {
+func Brbc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	s := cpu.ByteFromSreg()
 	if (s & (1 << uint(am.A1))) == 0 {
 		cpu.PC += int(am.A2)
 	}
 }
 
-func Bset(cpu *Cpu, am *instr.AddrMode) {
+func Bset(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	s := cpu.ByteFromSreg()
 	s |= (1 << uint(am.A1))
 	cpu.SregFromByte(s)
 }
 
-func Bclr(cpu *Cpu, am *instr.AddrMode) {
+func Bclr(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	s := cpu.ByteFromSreg()
 	s &= ^(1 << uint(am.A1))
 	cpu.SregFromByte(s)
 }
 
-func Bst(cpu *Cpu, am *instr.AddrMode) {
+func Bst(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	val := cpu.R[am.A2]
 	cpu.FlagT = (val & (1 << uint(am.A1))) != 0
 }
 
-func Bld(cpu *Cpu, am *instr.AddrMode) {
+func Bld(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	bit := uint(am.A1)
 	if cpu.FlagT {
 		cpu.R[am.A2] |= (1 << bit)

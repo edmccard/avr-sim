@@ -117,7 +117,7 @@ func (ac arithCase) testD5R5(op OpFunc, tag string) {
 	expCpu.R[r] = ac.v2
 	expCpu.R[d] = ac.res
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
-	op(&(initCpu.Cpu), &(initCpu.am))
+	op(&(initCpu.Cpu), &(initCpu.am), nil)
 	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
 }
 
@@ -136,7 +136,7 @@ func (ac arithCase) testMul(op OpFunc, tag string) {
 	expCpu.R[0] = ac.res & 0xff
 	expCpu.R[1] = ac.res >> 8
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
-	op(&(initCpu.Cpu), &(initCpu.am))
+	op(&(initCpu.Cpu), &(initCpu.am), nil)
 	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
 }
 
@@ -147,7 +147,7 @@ func (ac arithCase) testD4K8(op OpFunc, tag string) {
 	initCpu := ac.init
 	initCpu.R[16] = ac.v1
 	initCpu.am = instr.AddrMode{16, instr.Addr(ac.v2), instr.NoIndex}
-	op(&(initCpu.Cpu), &(initCpu.am))
+	op(&(initCpu.Cpu), &(initCpu.am), nil)
 	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
 }
 
@@ -160,7 +160,7 @@ func (ac arithCase) testDDK6(op OpFunc, tag string) {
 	initCpu.R[24] = ac.v1 & 0xff
 	initCpu.R[25] = ac.v1 >> 8
 	initCpu.am = instr.AddrMode{24, instr.Addr(ac.v2), instr.NoIndex}
-	op(&(initCpu.Cpu), &(initCpu.am))
+	op(&(initCpu.Cpu), &(initCpu.am), nil)
 	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
 }
 
@@ -180,7 +180,7 @@ func (ac arithCase) testMovw() {
 	expCpu.R[r+1] = ac.v2 >> 8
 	expCpu.R[d] = ac.res & 0xff
 	expCpu.R[d+1] = ac.res >> 8
-	Movw(&(initCpu.Cpu), &(initCpu.am))
+	Movw(&(initCpu.Cpu), &(initCpu.am), nil)
 	ac.t.Run(fmt.Sprintf("Movw [%d]", ac.n), initCpu, expCpu)
 }
 
@@ -198,6 +198,6 @@ func (bc branchCase) testBranch(t testcase.Tree, init tCpu, op OpFunc,
 	exp.PC = bc.post
 	init.am.A2 = instr.Addr(bc.offset)
 	init.PC = bc.pre
-	op(&(init.Cpu), &(init.am))
+	op(&(init.Cpu), &(init.am), nil)
 	t.Run(fmt.Sprintf("%s(%d) %02x", tag, bit, status), init, exp)
 }

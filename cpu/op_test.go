@@ -527,13 +527,13 @@ func TestFlag(t *testing.T) {
 		expCpu := start
 		initCpu := start
 		expCpu.setStatus(0xff, mask)
-		Bset(&(initCpu.Cpu), &(initCpu.am))
+		Bset(&(initCpu.Cpu), &(initCpu.am), nil)
 		tree.Run("Bset", initCpu, expCpu)
 
 		expCpu = start
 		initCpu = start
 		expCpu.setStatus(0x00, mask)
-		Bclr(&(initCpu.Cpu), &(initCpu.am))
+		Bclr(&(initCpu.Cpu), &(initCpu.am), nil)
 		tree.Run("Blcr", initCpu, expCpu)
 	}
 	testcase.NewTree(t, "FLAG", flagsOnOff, bitNum, flag).Start(tCpu{})
@@ -550,14 +550,14 @@ func TestBldBst(t *testing.T) {
 		initCpu := start
 		expCpu.FlagT = true
 		initCpu.am.A2 = 0
-		Bst(&(initCpu.Cpu), &(initCpu.am))
+		Bst(&(initCpu.Cpu), &(initCpu.am), nil)
 		tree.Run("Bst 1", initCpu, expCpu)
 
 		expCpu = start
 		initCpu = start
 		expCpu.FlagT = false
 		initCpu.am.A2 = 1
-		Bst(&(initCpu.Cpu), &(initCpu.am))
+		Bst(&(initCpu.Cpu), &(initCpu.am), nil)
 		tree.Run("Bst 0", initCpu, expCpu)
 	}
 	bld := func(tree testcase.Tree, init, exp testcase.Testable) {
@@ -569,7 +569,7 @@ func TestBldBst(t *testing.T) {
 		initCpu.R[0] = 0
 		expCpu := initCpu
 		expCpu.R[0] = 1 << bit
-		Bld(&(initCpu.Cpu), &(initCpu.am))
+		Bld(&(initCpu.Cpu), &(initCpu.am), nil)
 		tree.Run("Bld 1", initCpu, expCpu)
 
 		initCpu = start
@@ -577,7 +577,7 @@ func TestBldBst(t *testing.T) {
 		initCpu.R[0] = 0xff
 		expCpu = initCpu
 		expCpu.R[0] = ^(1 << bit) & 0xff
-		Bld(&(initCpu.Cpu), &(initCpu.am))
+		Bld(&(initCpu.Cpu), &(initCpu.am), nil)
 		tree.Run("Bld 0", initCpu, expCpu)
 	}
 	testcase.NewTree(t, "T", flagsOnOff, bitNum, bst).Start(tCpu{})
