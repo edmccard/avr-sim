@@ -477,8 +477,8 @@ func rmwROR(tree testcase.Tree, init, exp testcase.Testable) {
 			{0x19, 0x03, 0x03, 0x01},
 			{0x1b, 0x01, 0x01, 0x00}},
 		{
-			{0x00, 0x00, 0x00, 0x80},
-			{0x19, 0x01, 0x01, 0x80}},
+			{0x0c, 0x00, 0x00, 0x80},
+			{0x15, 0x01, 0x01, 0x80}},
 	}
 	initTc := init.(tCpu)
 	cIdx := 0
@@ -495,6 +495,7 @@ func rmwROR(tree testcase.Tree, init, exp testcase.Testable) {
 func TestRMW(t *testing.T) {
 	testcase.NewTree(t, "RMW", flagsOnOff, rmwRMW).Start(tCpu{})
 	testcase.NewTree(t, "RMW", flagsOnOff, carryOnOff, rmwSR).Start(tCpu{})
+	testcase.NewTree(t, "RMW", flagsOnOff, carryOnOff, rmwROR).Start(tCpu{})
 }
 
 func TestBranch(t *testing.T) {

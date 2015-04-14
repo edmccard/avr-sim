@@ -372,11 +372,11 @@ func Ror(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	if cpu.FlagC {
 		res |= 0x80
 	}
+	cpu.FlagN = cpu.FlagC
 	cpu.FlagC = (val & 0x1) != 0
-	cpu.FlagN = false
 	cpu.FlagZ = res == 0
-	cpu.FlagV = cpu.FlagC
-	cpu.FlagS = cpu.FlagV
+	cpu.FlagV = cpu.FlagN != cpu.FlagC
+	cpu.FlagS = cpu.FlagN != cpu.FlagV
 	cpu.R[am.A1] = res
 }
 
