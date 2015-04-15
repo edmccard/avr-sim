@@ -1,19 +1,39 @@
 package instr
 
+type IndexMode int
+
+const (
+	NoMode  IndexMode = 0
+	PostInc IndexMode = 32
+	PreDec  IndexMode = 64
+)
+
 type IndexReg int
 
 const (
-	NoIndex IndexReg = iota
-	X
-	XPostInc
-	XPreDec
-	Y
-	YPostInc
-	YPreDec
-	Z
-	ZPostInc
-	ZPreDec
+	NoIndex  IndexReg = 0
+	X        IndexReg = 26
+	XPostInc IndexReg = 26 + IndexReg(PostInc)
+	XPreDec  IndexReg = 26 + IndexReg(PreDec)
+	Y        IndexReg = 28
+	YPostInc IndexReg = 28 + IndexReg(PostInc)
+	YPreDec  IndexReg = 28 + IndexReg(PreDec)
+	Z        IndexReg = 30
+	ZPostInc IndexReg = 30 + IndexReg(PostInc)
+	ZPreDec  IndexReg = 30 + IndexReg(PreDec)
 )
+
+func (r IndexReg) Base() Addr {
+	return Addr(r & 0x1f)
+}
+
+func (r IndexReg) Mode() IndexMode {
+	return IndexMode(r & 0x60)
+}
+
+func (r IndexReg) WithMode(mode IndexMode) IndexReg {
+	return (r & 0x1f) + IndexReg(mode)
+}
 
 type Mode int
 
