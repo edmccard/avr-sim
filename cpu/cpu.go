@@ -3,10 +3,10 @@ package cpu
 import "github.com/edmccard/avr-sim/instr"
 
 type Cpu struct {
-	R     [32]int
+	reg   [32]int
 	flags [8]bool
-	SP    int
-	PC    int
+	sp    int
+	pc    int
 }
 
 type Flag int
@@ -80,8 +80,8 @@ func Add(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 }
 
 func addition(cpu *Cpu, am *instr.AddrMode, carry bool) {
-	d := cpu.R[am.A1]
-	r := cpu.R[am.A2]
+	d := cpu.reg[am.A1]
+	r := cpu.reg[am.A2]
 	c := 0
 	if carry {
 		c = 1
@@ -99,11 +99,11 @@ func addition(cpu *Cpu, am *instr.AddrMode, carry bool) {
 	cpu.flags[FlagN] = res >= 0x80
 	cpu.flags[FlagS] = cpu.flags[FlagV] != cpu.flags[FlagN]
 
-	cpu.R[am.A1] = res
+	cpu.reg[am.A1] = res
 }
 
 func Adiw(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	d := cpu.R[am.A1] | (cpu.R[am.A1+1] << 8)
+	d := cpu.reg[am.A1] | (cpu.reg[am.A1+1] << 8)
 	k := int(am.A2)
 
 	res := (d + k) & 0xffff
@@ -115,28 +115,28 @@ func Adiw(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.flags[FlagV] = !hd && hr
 	cpu.flags[FlagS] = cpu.flags[FlagV] != cpu.flags[FlagN]
 
-	cpu.R[am.A1] = res & 0xff
-	cpu.R[am.A1+1] = res >> 8
+	cpu.reg[am.A1] = res & 0xff
+	cpu.reg[am.A1+1] = res >> 8
 }
 
 func Sub(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.R[am.A1] = subtractionNoCarry(cpu, cpu.R[am.A1], cpu.R[am.A2])
+	cpu.reg[am.A1] = subtractionNoCarry(cpu, cpu.reg[am.A1], cpu.reg[am.A2])
 }
 
 func Subi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.R[am.A1] = subtractionNoCarry(cpu, cpu.R[am.A1], int(am.A2))
+	cpu.reg[am.A1] = subtractionNoCarry(cpu, cpu.reg[am.A1], int(am.A2))
 }
 
 func Cp(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	subtractionNoCarry(cpu, cpu.R[am.A1], cpu.R[am.A2])
+	subtractionNoCarry(cpu, cpu.reg[am.A1], cpu.reg[am.A2])
 }
 
 func Cpi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	subtractionNoCarry(cpu, cpu.R[am.A1], int(am.A2))
+	subtractionNoCarry(cpu, cpu.reg[am.A1], int(am.A2))
 }
 
 func Neg(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.R[am.A1] = subtractionNoCarry(cpu, 0, cpu.R[am.A1])
+	cpu.reg[am.A1] = subtractionNoCarry(cpu, 0, cpu.reg[am.A1])
 }
 
 func subtractionNoCarry(cpu *Cpu, d, r int) int {
@@ -158,17 +158,17 @@ func subtractionNoCarry(cpu *Cpu, d, r int) int {
 }
 
 func Sbc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.R[am.A1] = subtractionCarry(cpu, cpu.R[am.A1], cpu.R[am.A2],
+	cpu.reg[am.A1] = subtractionCarry(cpu, cpu.reg[am.A1], cpu.reg[am.A2],
 		cpu.flags[FlagC])
 }
 
 func Sbci(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.R[am.A1] = subtractionCarry(cpu, cpu.R[am.A1], int(am.A2),
+	cpu.reg[am.A1] = subtractionCarry(cpu, cpu.reg[am.A1], int(am.A2),
 		cpu.flags[FlagC])
 }
 
 func Cpc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	subtractionCarry(cpu, cpu.R[am.A1], cpu.R[am.A2], cpu.flags[FlagC])
+	subtractionCarry(cpu, cpu.reg[am.A1], cpu.reg[am.A2], cpu.flags[FlagC])
 }
 
 func subtractionCarry(cpu *Cpu, d, r int, carry bool) int {
@@ -196,7 +196,7 @@ func subtractionCarry(cpu *Cpu, d, r int, carry bool) int {
 }
 
 func Sbiw(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	d := cpu.R[am.A1] | (cpu.R[am.A1+1] << 8)
+	d := cpu.reg[am.A1] | (cpu.reg[am.A1+1] << 8)
 	k := int(am.A2)
 
 	res := (d - k) & 0xffff
@@ -208,16 +208,16 @@ func Sbiw(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.flags[FlagV] = hd && !hr
 	cpu.flags[FlagS] = cpu.flags[FlagV] != cpu.flags[FlagN]
 
-	cpu.R[am.A1] = res & 0xff
-	cpu.R[am.A1+1] = res >> 8
+	cpu.reg[am.A1] = res & 0xff
+	cpu.reg[am.A1+1] = res >> 8
 }
 
 func And(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.R[am.A1] = boolAnd(cpu, cpu.R[am.A1], cpu.R[am.A2])
+	cpu.reg[am.A1] = boolAnd(cpu, cpu.reg[am.A1], cpu.reg[am.A2])
 }
 
 func Andi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.R[am.A1] = boolAnd(cpu, cpu.R[am.A1], int(am.A2))
+	cpu.reg[am.A1] = boolAnd(cpu, cpu.reg[am.A1], int(am.A2))
 }
 
 func boolAnd(cpu *Cpu, d, r int) int {
@@ -230,11 +230,11 @@ func boolAnd(cpu *Cpu, d, r int) int {
 }
 
 func Or(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.R[am.A1] = boolOr(cpu, cpu.R[am.A1], cpu.R[am.A2])
+	cpu.reg[am.A1] = boolOr(cpu, cpu.reg[am.A1], cpu.reg[am.A2])
 }
 
 func Ori(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.R[am.A1] = boolOr(cpu, cpu.R[am.A1], int(am.A2))
+	cpu.reg[am.A1] = boolOr(cpu, cpu.reg[am.A1], int(am.A2))
 }
 
 func boolOr(cpu *Cpu, d, r int) int {
@@ -247,143 +247,143 @@ func boolOr(cpu *Cpu, d, r int) int {
 }
 
 func Eor(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	res := cpu.R[am.A1] ^ cpu.R[am.A2]
+	res := cpu.reg[am.A1] ^ cpu.reg[am.A2]
 	cpu.flags[FlagV] = false
 	cpu.flags[FlagN] = res >= 0x80
 	cpu.flags[FlagS] = cpu.flags[FlagN]
 	cpu.flags[FlagZ] = res == 0
-	cpu.R[am.A1] = res
+	cpu.reg[am.A1] = res
 }
 
 func Mul(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	res := cpu.R[am.A1] * cpu.R[am.A2]
+	res := cpu.reg[am.A1] * cpu.reg[am.A2]
 	cpu.flags[FlagC] = res >= 0x8000
 	cpu.flags[FlagZ] = res == 0
-	cpu.R[0] = res & 0xff
-	cpu.R[1] = res >> 8
+	cpu.reg[0] = res & 0xff
+	cpu.reg[1] = res >> 8
 }
 
 func Fmul(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	res := cpu.R[am.A1] * cpu.R[am.A2]
+	res := cpu.reg[am.A1] * cpu.reg[am.A2]
 	cpu.flags[FlagC] = res >= 0x8000
 	res = (res << 1) & 0xffff
 	cpu.flags[FlagZ] = res == 0
-	cpu.R[0] = res & 0xff
-	cpu.R[1] = res >> 8
+	cpu.reg[0] = res & 0xff
+	cpu.reg[1] = res >> 8
 }
 
 func Muls(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	d := int8(cpu.R[am.A1])
-	r := int8(cpu.R[am.A2])
+	d := int8(cpu.reg[am.A1])
+	r := int8(cpu.reg[am.A2])
 	res := (int(d) * int(r)) & 0xffff
 	cpu.flags[FlagC] = res >= 0x8000
 	cpu.flags[FlagZ] = res == 0
-	cpu.R[0] = res & 0xff
-	cpu.R[1] = res >> 8
+	cpu.reg[0] = res & 0xff
+	cpu.reg[1] = res >> 8
 }
 
 func Fmuls(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	d := int8(cpu.R[am.A1])
-	r := int8(cpu.R[am.A2])
+	d := int8(cpu.reg[am.A1])
+	r := int8(cpu.reg[am.A2])
 	res := (int(d) * int(r)) & 0xffff
 	cpu.flags[FlagC] = res >= 0x8000
 	res = (res << 1) & 0xffff
 	cpu.flags[FlagZ] = res == 0
-	cpu.R[0] = res & 0xff
-	cpu.R[1] = res >> 8
+	cpu.reg[0] = res & 0xff
+	cpu.reg[1] = res >> 8
 }
 
 func Mulsu(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	d := int8(cpu.R[am.A1])
-	r := cpu.R[am.A2]
+	d := int8(cpu.reg[am.A1])
+	r := cpu.reg[am.A2]
 	res := (int(d) * int(r)) & 0xffff
 	cpu.flags[FlagC] = res >= 0x8000
 	cpu.flags[FlagZ] = res == 0
-	cpu.R[0] = res & 0xff
-	cpu.R[1] = res >> 8
+	cpu.reg[0] = res & 0xff
+	cpu.reg[1] = res >> 8
 }
 
 func Fmulsu(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	d := int8(cpu.R[am.A1])
-	r := cpu.R[am.A2]
+	d := int8(cpu.reg[am.A1])
+	r := cpu.reg[am.A2]
 	res := (int(d) * int(r)) & 0xffff
 	cpu.flags[FlagC] = res >= 0x8000
 	res = (res << 1) & 0xffff
 	cpu.flags[FlagZ] = res == 0
-	cpu.R[0] = res & 0xff
-	cpu.R[1] = res >> 8
+	cpu.reg[0] = res & 0xff
+	cpu.reg[1] = res >> 8
 }
 
 func Mov(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.R[am.A1] = cpu.R[am.A2]
+	cpu.reg[am.A1] = cpu.reg[am.A2]
 }
 
 func Movw(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.R[am.A1] = cpu.R[am.A2]
-	cpu.R[am.A1+1] = cpu.R[am.A2+1]
+	cpu.reg[am.A1] = cpu.reg[am.A2]
+	cpu.reg[am.A1+1] = cpu.reg[am.A2+1]
 }
 
 func Ldi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.R[am.A1] = int(am.A2)
+	cpu.reg[am.A1] = int(am.A2)
 }
 
 func Com(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	res := ^cpu.R[am.A1] & 0xff
+	res := ^cpu.reg[am.A1] & 0xff
 	cpu.flags[FlagC] = true
 	cpu.flags[FlagV] = false
 	cpu.flags[FlagZ] = res == 0
 	cpu.flags[FlagN] = res >= 0x80
 	cpu.flags[FlagS] = cpu.flags[FlagN]
-	cpu.R[am.A1] = res
+	cpu.reg[am.A1] = res
 }
 
 func Swap(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	val := cpu.R[am.A1]
-	cpu.R[am.A1] = ((val & 0xf) << 4) | ((val & 0xf0) >> 4)
+	val := cpu.reg[am.A1]
+	cpu.reg[am.A1] = ((val & 0xf) << 4) | ((val & 0xf0) >> 4)
 }
 
 func Dec(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	res := (cpu.R[am.A1] - 1) & 0xff
+	res := (cpu.reg[am.A1] - 1) & 0xff
 	cpu.flags[FlagV] = res == 0x7f
 	cpu.flags[FlagN] = res >= 0x80
 	cpu.flags[FlagS] = cpu.flags[FlagV] != cpu.flags[FlagN]
 	cpu.flags[FlagZ] = res == 0
-	cpu.R[am.A1] = res
+	cpu.reg[am.A1] = res
 }
 
 func Inc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	res := (cpu.R[am.A1] + 1) & 0xff
+	res := (cpu.reg[am.A1] + 1) & 0xff
 	cpu.flags[FlagV] = res == 0x80
 	cpu.flags[FlagN] = res >= 0x80
 	cpu.flags[FlagS] = cpu.flags[FlagV] != cpu.flags[FlagN]
 	cpu.flags[FlagZ] = res == 0
-	cpu.R[am.A1] = res
+	cpu.reg[am.A1] = res
 }
 
 func Asr(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	val := cpu.R[am.A1]
+	val := cpu.reg[am.A1]
 	res := (val >> 1) | (val & 0x80)
 	cpu.flags[FlagC] = (val & 0x1) != 0
 	cpu.flags[FlagN] = (val & 0x80) != 0
 	cpu.flags[FlagZ] = res == 0
 	cpu.flags[FlagV] = cpu.flags[FlagN] != cpu.flags[FlagC]
 	cpu.flags[FlagS] = cpu.flags[FlagN] != cpu.flags[FlagV]
-	cpu.R[am.A1] = res
+	cpu.reg[am.A1] = res
 }
 
 func Lsr(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	val := cpu.R[am.A1]
+	val := cpu.reg[am.A1]
 	res := val >> 1
 	cpu.flags[FlagC] = (val & 0x1) != 0
 	cpu.flags[FlagN] = false
 	cpu.flags[FlagZ] = res == 0
 	cpu.flags[FlagV] = cpu.flags[FlagC]
 	cpu.flags[FlagS] = cpu.flags[FlagV]
-	cpu.R[am.A1] = res
+	cpu.reg[am.A1] = res
 }
 
 func Ror(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	val := cpu.R[am.A1]
+	val := cpu.reg[am.A1]
 	res := val >> 1
 	if cpu.flags[FlagC] {
 		res |= 0x80
@@ -393,18 +393,18 @@ func Ror(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.flags[FlagZ] = res == 0
 	cpu.flags[FlagV] = cpu.flags[FlagN] != cpu.flags[FlagC]
 	cpu.flags[FlagS] = cpu.flags[FlagN] != cpu.flags[FlagV]
-	cpu.R[am.A1] = res
+	cpu.reg[am.A1] = res
 }
 
 func Brbs(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	if cpu.flags[am.A1] {
-		cpu.PC += int(am.A2)
+		cpu.pc += int(am.A2)
 	}
 }
 
 func Brbc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	if !cpu.flags[am.A1] {
-		cpu.PC += int(am.A2)
+		cpu.pc += int(am.A2)
 	}
 }
 
@@ -417,15 +417,15 @@ func Bclr(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 }
 
 func Bst(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	val := cpu.R[am.A2]
+	val := cpu.reg[am.A2]
 	cpu.flags[FlagT] = (val & (1 << uint(am.A1))) != 0
 }
 
 func Bld(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	bit := uint(am.A1)
 	if cpu.flags[FlagT] {
-		cpu.R[am.A2] |= (1 << bit)
+		cpu.reg[am.A2] |= (1 << bit)
 	} else {
-		cpu.R[am.A2] &= ^(1 << bit) & 0xff
+		cpu.reg[am.A2] &= ^(1 << bit) & 0xff
 	}
 }

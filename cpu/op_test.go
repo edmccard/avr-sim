@@ -375,11 +375,11 @@ func testD5R5(ac aluCase, op OpFunc, tag string) {
 	if d == r && ac.v1 != ac.v2 {
 		return
 	}
-	initCpu.R[r] = ac.v2
-	initCpu.R[d] = ac.v1
+	initCpu.reg[r] = ac.v2
+	initCpu.reg[d] = ac.v1
 	expCpu := ac.init
-	expCpu.R[r] = ac.v2
-	expCpu.R[d] = ac.res
+	expCpu.reg[r] = ac.v2
+	expCpu.reg[d] = ac.res
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
 	op(&(initCpu.Cpu), &(initCpu.am), nil)
 	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
@@ -388,9 +388,9 @@ func testD5R5(ac aluCase, op OpFunc, tag string) {
 func testD5(ac aluCase, op OpFunc, tag string) {
 	initCpu := ac.init
 	d := initCpu.am.A1
-	initCpu.R[d] = ac.v1
+	initCpu.reg[d] = ac.v1
 	expCpu := ac.init
-	expCpu.R[d] = ac.res
+	expCpu.reg[d] = ac.res
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
 	op(&(initCpu.Cpu), &(initCpu.am), nil)
 	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
@@ -398,10 +398,10 @@ func testD5(ac aluCase, op OpFunc, tag string) {
 
 func testD4K8(ac aluCase, op OpFunc, tag string) {
 	expCpu := ac.init
-	expCpu.R[16] = ac.res
+	expCpu.reg[16] = ac.res
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
 	initCpu := ac.init
-	initCpu.R[16] = ac.v1
+	initCpu.reg[16] = ac.v1
 	initCpu.am = instr.AddrMode{16, instr.Addr(ac.v2), instr.NoIndex}
 	op(&(initCpu.Cpu), &(initCpu.am), nil)
 	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
@@ -409,12 +409,12 @@ func testD4K8(ac aluCase, op OpFunc, tag string) {
 
 func testDDK6(ac aluCase, op OpFunc, tag string) {
 	expCpu := ac.init
-	expCpu.R[24] = ac.res & 0xff
-	expCpu.R[25] = ac.res >> 8
+	expCpu.reg[24] = ac.res & 0xff
+	expCpu.reg[25] = ac.res >> 8
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
 	initCpu := ac.init
-	initCpu.R[24] = ac.v1 & 0xff
-	initCpu.R[25] = ac.v1 >> 8
+	initCpu.reg[24] = ac.v1 & 0xff
+	initCpu.reg[25] = ac.v1 >> 8
 	initCpu.am = instr.AddrMode{24, instr.Addr(ac.v2), instr.NoIndex}
 	op(&(initCpu.Cpu), &(initCpu.am), nil)
 	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
@@ -427,13 +427,13 @@ func testMul(ac aluCase, op OpFunc, tag string) {
 	if d == r && ac.v1 != ac.v2 {
 		return
 	}
-	initCpu.R[r] = ac.v2
-	initCpu.R[d] = ac.v1
+	initCpu.reg[r] = ac.v2
+	initCpu.reg[d] = ac.v1
 	expCpu := ac.init
-	expCpu.R[r] = ac.v2
-	expCpu.R[d] = ac.v1
-	expCpu.R[0] = ac.res & 0xff
-	expCpu.R[1] = ac.res >> 8
+	expCpu.reg[r] = ac.v2
+	expCpu.reg[d] = ac.v1
+	expCpu.reg[0] = ac.res & 0xff
+	expCpu.reg[1] = ac.res >> 8
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
 	op(&(initCpu.Cpu), &(initCpu.am), nil)
 	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
@@ -446,15 +446,15 @@ func testMovw(ac aluCase, op OpFunc, tag string) {
 	if d == r && ac.v1 != ac.v2 {
 		return
 	}
-	initCpu.R[r] = ac.v2 & 0xff
-	initCpu.R[r+1] = ac.v2 >> 8
-	initCpu.R[d] = ac.v1 & 0xff
-	initCpu.R[d+1] = ac.v1 >> 8
+	initCpu.reg[r] = ac.v2 & 0xff
+	initCpu.reg[r+1] = ac.v2 >> 8
+	initCpu.reg[d] = ac.v1 & 0xff
+	initCpu.reg[d+1] = ac.v1 >> 8
 	expCpu := ac.init
-	expCpu.R[r] = ac.v2 & 0xff
-	expCpu.R[r+1] = ac.v2 >> 8
-	expCpu.R[d] = ac.res & 0xff
-	expCpu.R[d+1] = ac.res >> 8
+	expCpu.reg[r] = ac.v2 & 0xff
+	expCpu.reg[r+1] = ac.v2 >> 8
+	expCpu.reg[d] = ac.res & 0xff
+	expCpu.reg[d+1] = ac.res >> 8
 	Movw(&(initCpu.Cpu), &(initCpu.am), nil)
 	ac.t.Run(fmt.Sprintf("Movw [%d]", ac.n), initCpu, expCpu)
 }
@@ -519,7 +519,7 @@ func TestBranch(t *testing.T) {
 	//       pc+offset doesn't/does wrap.
 	brOffset := func(tree testcase.Tree, init, exp testcase.Testable) {
 		initTc := init.(tCpu)
-		initTc.PC = 64
+		initTc.pc = 64
 		initTc.am.A2 = 63
 		tree.Run("+63", initTc, exp)
 		initTc.am.A2 = -64
@@ -530,13 +530,13 @@ func TestBranch(t *testing.T) {
 		initCpu := init.(tCpu)
 		expCpuS := initCpu
 		expCpuC := initCpu
-		jump := initCpu.PC + int(initCpu.am.A2)
+		jump := initCpu.pc + int(initCpu.am.A2)
 		// TODO: clamp to [0,PROGEND]
 		bit := Flag(initCpu.am.A1)
 		if initCpu.GetFlag(bit) {
-			expCpuS.PC = jump
+			expCpuS.pc = jump
 		} else {
-			expCpuC.PC = jump
+			expCpuC.pc = jump
 		}
 		Brbs(&(initCpu.Cpu), &(initCpu.am), nil)
 		tree.Run("Brbs", initCpu, expCpuS)
@@ -567,13 +567,13 @@ func TestFlag(t *testing.T) {
 }
 
 func TestBst(t *testing.T) {
-	// Branches with R[0] = 1 << bit, ~(1 << bit).
+	// Branches with reg[0] = 1 << bit, ~(1 << bit).
 	brSetClr := func(tree testcase.Tree, init, exp testcase.Testable) {
 		initCpu := init.(tCpu)
 		bit := uint(initCpu.am.A1)
-		initCpu.R[0] = 1 << bit
+		initCpu.reg[0] = 1 << bit
 		tree.Run("bOn", initCpu, exp)
-		initCpu.R[0] = ^(1 << bit)
+		initCpu.reg[0] = ^(1 << bit)
 		tree.Run("bOff", initCpu, exp)
 	}
 
@@ -581,7 +581,7 @@ func TestBst(t *testing.T) {
 		initCpu := init.(tCpu)
 		mask := 1 << uint(initCpu.am.A1)
 		expCpu := initCpu
-		expCpu.SetFlag(FlagT, (initCpu.R[0]&mask) != 0)
+		expCpu.SetFlag(FlagT, (initCpu.reg[0]&mask) != 0)
 		Bst(&(initCpu.Cpu), &(initCpu.am), nil)
 		tree.Run("Bst", initCpu, expCpu)
 	}
@@ -595,11 +595,11 @@ func TestBld(t *testing.T) {
 		bit := uint(initCpu.am.A1)
 		expCpu := initCpu
 		if initCpu.GetFlag(FlagT) {
-			initCpu.R[0] = 0x00
-			expCpu.R[0] = 1 << bit
+			initCpu.reg[0] = 0x00
+			expCpu.reg[0] = 1 << bit
 		} else {
-			initCpu.R[0] = 0xff
-			expCpu.R[0] = ^(1 << bit) & 0xff
+			initCpu.reg[0] = 0xff
+			expCpu.reg[0] = ^(1 << bit) & 0xff
 		}
 		Bld(&(initCpu.Cpu), &(initCpu.am), nil)
 		tree.Run("Bld", initCpu, expCpu)

@@ -52,9 +52,9 @@ func (tc tCpu) Diff(other testcase.Testable) interface{} {
 func (this tCpu) rDiff(that tCpu) (rThis, rThat string) {
 	var thisR, thatR []string
 	for i := 0; i < 32; i++ {
-		if this.R[i] != that.R[i] {
-			thisR = append(thisR, fmt.Sprintf("%d=%02x", i, this.R[i]))
-			thatR = append(thatR, fmt.Sprintf("%d=%02x", i, that.R[i]))
+		if this.reg[i] != that.reg[i] {
+			thisR = append(thisR, fmt.Sprintf("%d=%02x", i, this.reg[i]))
+			thatR = append(thatR, fmt.Sprintf("%d=%02x", i, that.reg[i]))
 		}
 	}
 	if thisR != nil {
@@ -72,13 +72,13 @@ func (this tCpu) sDiff(that tCpu) (sThis, sThat string) {
 		thisS = append(thisS, fmt.Sprintf("S=%02x", thisSreg))
 		thatS = append(thatS, fmt.Sprintf("S=%02x", thatSreg))
 	}
-	if this.SP != that.SP {
-		thisS = append(thisS, fmt.Sprintf("SP=%04x", this.SP))
-		thatS = append(thatS, fmt.Sprintf("SP=%04x", that.SP))
+	if this.sp != that.sp {
+		thisS = append(thisS, fmt.Sprintf("sp=%04x", this.sp))
+		thatS = append(thatS, fmt.Sprintf("sp=%04x", that.sp))
 	}
-	if this.PC != that.PC {
-		thisS = append(thisS, fmt.Sprintf("PC=%04x", this.PC))
-		thatS = append(thatS, fmt.Sprintf("PC=%04x", that.PC))
+	if this.pc != that.pc {
+		thisS = append(thisS, fmt.Sprintf("pc=%04x", this.pc))
+		thatS = append(thatS, fmt.Sprintf("pc=%04x", that.pc))
 	}
 	sThis = strings.Join(thisS, " ")
 	sThat = strings.Join(thatS, " ")
