@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/edmccard/avr-sim/instr"
 	"github.com/edmccard/testcase"
-	"reflect"
 	"strings"
 )
 
@@ -12,14 +11,12 @@ import (
 // initial state for tests.
 type tCpu struct {
 	Cpu
-	am   instr.AddrMode
-	dmem tDataMem
+	am instr.AddrMode
 }
 
 func (tc tCpu) Equals(other testcase.Testable) bool {
 	o := other.(tCpu)
-	return tc.Cpu == o.Cpu && tc.am == o.am &&
-		(&tc.dmem).equals(&o.dmem)
+	return tc.Cpu == o.Cpu
 }
 
 func (tc tCpu) Diff(other testcase.Testable) interface{} {
@@ -96,47 +93,50 @@ func (tc *tCpu) setStatus(expStatus, mask byte) {
 }
 
 type tDataMem struct {
-	readAddrs  []instr.Addr
-	writeAddrs []instr.Addr
-	writeVals  []byte
+	readCount  int
+	readAddrs  [1]instr.Addr
+	writeCount int
+	writeAddrs [1]instr.Addr
+	writeVals  [1]byte
 }
 
-func (tdm *tDataMem) ReadData(addr instr.Addr) (byte, error) {
-	tdm.readAddrs = append(tdm.readAddrs, addr)
-	return 0xff, nil
+func (tdm *tDataMem) ReadData(addr instr.Addr) byte {
+	if tdm.readCount < 1 {
+		tdm.readAddrs[0] = addr
+	}
+	tdm.readCount += 1
+	return 0xff
 }
 
-func (tdm *tDataMem) WriteData(addr instr.Addr, val byte) error {
-	tdm.writeAddrs = append(tdm.writeAddrs, addr)
-	tdm.writeVals = append(tdm.writeVals, val)
-	return nil
-}
-
-func (this *tDataMem) equals(that *tDataMem) bool {
-	return reflect.DeepEqual(this, that)
+func (tdm *tDataMem) WriteData(addr instr.Addr, val byte) {
+	if tdm.writeCount < 1 {
+		tdm.writeAddrs[0] = addr
+		tdm.writeVals[0] = val
+	}
+	tdm.writeCount += 1
 }
 
 func (this *tDataMem) diff(that *tDataMem) string {
 	// Assumes this != that; assumes 1 read xor 1 write;
 	// assumes this is expected and that is actual
 	switch {
-	case len(this.readAddrs) < len(that.readAddrs):
+	case this.readCount < that.readCount:
 		return "MEM: too many reads"
-	case len(this.readAddrs) > len(that.readAddrs):
+	case this.readCount > that.readCount:
 		return "MEM: too few reads"
-	case len(this.writeAddrs) < len(that.writeAddrs):
+	case this.writeCount < that.writeCount:
 		return "MEM: too many writes"
-	case len(this.writeAddrs) > len(that.writeAddrs):
+	case this.writeCount > that.writeCount:
 		return "MEM: too few writes"
 	}
-	if len(this.readAddrs) > 0 {
+	if this.readCount > 0 {
 		if this.readAddrs[0] != that.readAddrs[0] {
 			return fmt.Sprintf("MEM: expected read %04x got %04x",
 				this.readAddrs[0], that.readAddrs[0])
 		}
 	}
-	if len(this.writeAddrs) > 0 {
-		if this.writeAddrs[0] != that.writeAddrs[1] {
+	if this.writeCount > 0 {
+		if this.writeAddrs[0] != that.writeAddrs[0] {
 			return fmt.Sprintf("MEM: expected write at %04x got %04x",
 				this.writeAddrs[0], that.writeAddrs[0])
 		}
@@ -146,4 +146,29 @@ func (this *tDataMem) diff(that *tDataMem) string {
 		}
 	}
 	return ""
+}
+
+type tCpuDm struct {
+	tCpu
+	dmem tDataMem
+}
+
+func (tc tCpuDm) Equals(other testcase.Testable) bool {
+	o := other.(tCpuDm)
+	return tc.tCpu == o.tCpu && tc.dmem == o.dmem
+}
+
+func (tc tCpuDm) Diff(other testcase.Testable) interface{} {
+	o := other.(tCpuDm)
+	cDiff := tc.tCpu.Diff(o.tCpu)
+	mDiff := fmt.Sprintf("%s", tc.dmem.diff(&o.dmem))
+	if mDiff != "" {
+		if cDiff != nil {
+			return fmt.Sprintf("%s", cDiff) + "\n" + mDiff
+		} else {
+			return "\n" + mDiff
+		}
+	} else {
+		return cDiff
+	}
 }

@@ -7,6 +7,8 @@ type Cpu struct {
 	flags [8]bool
 	sp    int
 	pc    int
+	ramp  [4]int
+	rmask [4]int
 }
 
 type Flag int
@@ -21,6 +23,14 @@ const (
 	FlagT
 	FlagI
 )
+
+func (c *Cpu) GetReg(r instr.Addr) byte {
+	return byte(c.reg[r])
+}
+
+func (c *Cpu) SetReg(r instr.Addr, val byte) {
+	c.reg[r] = int(val)
+}
 
 func (c *Cpu) GetFlag(f Flag) bool {
 	return c.flags[f]
@@ -67,6 +77,43 @@ func (c *Cpu) ByteFromSreg() (b byte) {
 		b |= 0x80
 	}
 	return
+}
+
+func (c *Cpu) SetRamp(ireg instr.IndexReg, val byte) {
+	base := ireg.Base()
+	c.ramp[base] = (int(val) << 16) & c.rmask[base]
+}
+
+func (c *Cpu) GetRamp(ireg instr.IndexReg) byte {
+	base := ireg.Base()
+	return byte((c.ramp[base] & c.rmask[base]) >> 16)
+}
+
+func (c *Cpu) SetRMask(ireg instr.IndexReg, mask byte) {
+	base := ireg.Base()
+	c.rmask[base] = (int(mask) << 16) | 0xffff
+}
+
+func (c *Cpu) indirect(ireg instr.IndexReg, q instr.Addr) instr.Addr {
+	base := ireg.Base()
+	mode := ireg.Mode()
+	r := 24 + base*2
+	addr := c.ramp[base] | c.reg[r] | (c.reg[r+1] << 8)
+	switch mode {
+	case instr.NoMode:
+		addr = (addr + int(q)) & (c.rmask[base] | 0xffff)
+	case instr.PreDec:
+		addr = (addr - 1) & (c.rmask[base] | 0xffff)
+		c.reg[r] = addr & 0xff
+		c.reg[r+1] = (addr >> 8) & 0xff
+		c.ramp[base] = addr >> 16
+	case instr.PostInc:
+		a2 := (addr + 1) & (c.rmask[base] | 0xffff)
+		c.reg[r] = a2 & 0xff
+		c.reg[r+1] = (a2 >> 8) & 0xff
+		c.ramp[base] = a2 >> 16
+	}
+	return instr.Addr(addr)
 }
 
 type OpFunc func(*Cpu, *instr.AddrMode, Memory)
@@ -428,4 +475,32 @@ func Bld(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	} else {
 		cpu.reg[am.A2] &= ^(1 << bit) & 0xff
 	}
+}
+
+func Ld(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	addr := cpu.indirect(am.Ireg, 0)
+	cpu.reg[am.A1] = int(mem.ReadData(addr))
+}
+
+func St(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	addr := cpu.indirect(am.Ireg, 0)
+	mem.WriteData(addr, byte(cpu.reg[am.A1]))
+}
+
+func Ldd(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	addr := cpu.indirect(am.Ireg, am.A2)
+	cpu.reg[am.A1] = int(mem.ReadData(addr))
+}
+
+func Std(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	addr := cpu.indirect(am.Ireg, am.A2)
+	mem.WriteData(addr, byte(cpu.reg[am.A1]))
+}
+
+func Lds(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	cpu.reg[am.A1] = int(mem.ReadData(instr.Addr(cpu.ramp[0]) | am.A2))
+}
+
+func Sts(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	mem.WriteData(instr.Addr(cpu.ramp[0])|am.A2, byte(cpu.reg[am.A1]))
 }

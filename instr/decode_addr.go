@@ -4,35 +4,41 @@ type IndexMode int
 
 const (
 	NoMode  IndexMode = 0
-	PostInc IndexMode = 32
-	PreDec  IndexMode = 64
+	PostInc IndexMode = 4
+	PreDec  IndexMode = 8
 )
 
 type IndexReg int
 
 const (
 	NoIndex  IndexReg = 0
-	X        IndexReg = 26
-	XPostInc IndexReg = 26 + IndexReg(PostInc)
-	XPreDec  IndexReg = 26 + IndexReg(PreDec)
-	Y        IndexReg = 28
-	YPostInc IndexReg = 28 + IndexReg(PostInc)
-	YPreDec  IndexReg = 28 + IndexReg(PreDec)
-	Z        IndexReg = 30
-	ZPostInc IndexReg = 30 + IndexReg(PostInc)
-	ZPreDec  IndexReg = 30 + IndexReg(PreDec)
+	X        IndexReg = 1
+	Y        IndexReg = 2
+	Z        IndexReg = 3
+	XPostInc IndexReg = X + IndexReg(PostInc)
+	XPreDec  IndexReg = X + IndexReg(PreDec)
+	YPostInc IndexReg = Y + IndexReg(PostInc)
+	YPreDec  IndexReg = Y + IndexReg(PreDec)
+	ZPostInc IndexReg = Z + IndexReg(PostInc)
+	ZPreDec  IndexReg = Z + IndexReg(PreDec)
 )
 
+//go:generate stringer -type=IndexReg
+
 func (r IndexReg) Base() Addr {
-	return Addr(r & 0x1f)
+	return Addr(r & 0x3)
+}
+
+func (r IndexReg) Reg() Addr {
+	return Addr(24 + (r&0x3)*2)
 }
 
 func (r IndexReg) Mode() IndexMode {
-	return IndexMode(r & 0x60)
+	return IndexMode(r & 0xc)
 }
 
 func (r IndexReg) WithMode(mode IndexMode) IndexReg {
-	return (r & 0x1f) + IndexReg(mode)
+	return (r & 0x3) + IndexReg(mode)
 }
 
 type Mode int
