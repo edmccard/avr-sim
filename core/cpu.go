@@ -7,8 +7,8 @@ type Cpu struct {
 	flags [8]bool
 	sp    int
 	pc    int
-	ramp  [4]int
-	rmask [4]int
+	ramp  [5]int // D,X,Y,Z,EIND
+	rmask [5]int
 }
 
 type Flag int
@@ -114,6 +114,14 @@ func (c *Cpu) indirect(ireg instr.IndexReg, q instr.Addr) instr.Addr {
 		c.ramp[base] = a2 >> 16
 	}
 	return instr.Addr(addr)
+}
+
+func (c *Cpu) spInc(offset int) {
+	c.sp = (c.sp + offset) & 0xffff
+}
+
+func (c *Cpu) pcInc(offset int) {
+	c.pc = (c.pc + offset) & (c.rmask[4] | 0xffff)
 }
 
 type OpFunc func(*Cpu, *instr.AddrMode, Memory)
@@ -443,18 +451,6 @@ func Ror(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.reg[am.A1] = res
 }
 
-func Brbs(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	if cpu.flags[am.A1] {
-		cpu.pc += int(am.A2)
-	}
-}
-
-func Brbc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	if !cpu.flags[am.A1] {
-		cpu.pc += int(am.A2)
-	}
-}
-
 func Bset(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.flags[am.A1] = true
 }
@@ -503,4 +499,26 @@ func Lds(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 
 func Sts(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	mem.WriteData(instr.Addr(cpu.ramp[0])|am.A2, byte(cpu.reg[am.A1]))
+}
+
+func Push(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	mem.WriteData(instr.Addr(cpu.sp), byte(cpu.reg[am.A1]))
+	cpu.spInc(-1)
+}
+
+func Pop(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	cpu.spInc(1)
+	cpu.reg[am.A1] = int(mem.ReadData(instr.Addr(cpu.sp)))
+}
+
+func Brbs(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	if cpu.flags[am.A1] {
+		cpu.pcInc(int(am.A2))
+	}
+}
+
+func Brbc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	if !cpu.flags[am.A1] {
+		cpu.pcInc(int(am.A2))
+	}
 }
