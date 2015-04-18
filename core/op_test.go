@@ -606,3 +606,62 @@ func TestBld(t *testing.T) {
 	}
 	testcase.NewTree(t, "XFR", brAllFlags, brBit, brXfer, run).Start(tCpu{})
 }
+
+func TestJmpRjmp(t *testing.T) {
+	var cases = []struct {
+		op                       OpFunc
+		tag                      string
+		rmask, pcPre, a1, pcPost int
+	}{
+		{Jmp, "Jmp", 0x00, 0x0000, 0x10000, 0x0000},
+		{Jmp, "Jmp", 0x3f, 0x0000, 0x10000, 0x10000},
+		{Jmp, "Jmp", 0x00, 0x0000, 0x2000, 0x2000},
+		{Jmp, "Jmp", 0x3f, 0x0000, 0x2000, 0x2000},
+		{Rjmp, "Rjmp", 0x00, 0x0000, -1, 0xffff},
+		{Rjmp, "Rjmp", 0x3f, 0x0000, -1, 0x3fffff},
+		{Rjmp, "Rjmp", 0x00, 0xffff, 1, 0x0000},
+		{Rjmp, "Rjmp", 0x3f, 0xffff, 1, 0x10000},
+		{Rjmp, "Rjmp", 0x00, 0x1000, 0x07ff, 0x17ff},
+		{Rjmp, "Rjmp", 0x3f, 0x1000, 0x07ff, 0x17ff},
+	}
+	run := func(tree testcase.Tree, init, exp testcase.Testable) {
+		for n, c := range cases {
+			initCpu := init.(tCpu)
+			initCpu.am.A1 = instr.Addr(c.a1)
+			initCpu.pc = c.pcPre
+			initCpu.rmask[Eind] = c.rmask << 16
+			expCpu := initCpu
+			expCpu.pc = c.pcPost
+			c.op(&initCpu.Cpu, &initCpu.am, nil)
+			tree.Run(fmt.Sprintf("%s [%d]", c.tag, n), initCpu, expCpu)
+		}
+	}
+	testcase.NewTree(t, "JMP", brAllFlags, run).Start(tCpu{})
+}
+
+func TestIjmpEijmp(t *testing.T) {
+	var cases = []struct {
+		op                   OpFunc
+		tag                  string
+		eind, z, post int
+	}{
+		{Ijmp, "Ijmp", 0x00, 0x2000, 0x2000},
+		{Ijmp, "Ijmp", 0x3f, 0x2000, 0x2000},
+		{Eijmp, "Eijmp", 0x00, 0x2000, 0x2000},
+		{Eijmp, "Eijmp", 0x3f, 0x2000, 0x3f2000},
+	}
+	run := func(tree testcase.Tree, init, exp testcase.Testable) {
+		for n, c := range cases {
+			initCpu := init.(tCpu)
+			initCpu.SetReg(30, byte(c.z))
+			initCpu.SetReg(31, byte(c.z>>8))
+			initCpu.rmask[Eind] = 0x3f << 16
+			initCpu.ramp[Eind] = c.eind << 16
+			expCpu := initCpu
+			expCpu.pc = c.post
+			c.op(&initCpu.Cpu, &initCpu.am, nil)
+			tree.Run(fmt.Sprintf("%s [%d]", c.tag, n), initCpu, expCpu)
+		}
+	}
+	testcase.NewTree(t, "JMP", brAllFlags, run).Start(tCpu{})
+}

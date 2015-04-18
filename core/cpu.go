@@ -24,6 +24,16 @@ const (
 	FlagI
 )
 
+type Ramp int
+
+const (
+	RampD Ramp = iota
+	RampX
+	RampY
+	RampZ
+	Eind
+)
+
 func (c *Cpu) GetReg(r instr.Addr) byte {
 	return byte(c.reg[r])
 }
@@ -91,7 +101,7 @@ func (c *Cpu) GetRamp(ireg instr.IndexReg) byte {
 
 func (c *Cpu) SetRMask(ireg instr.IndexReg, mask byte) {
 	base := ireg.Base()
-	c.rmask[base] = (int(mask) << 16) | 0xffff
+	c.rmask[base] = (int(mask) << 16)
 }
 
 func (c *Cpu) indirect(ireg instr.IndexReg, q instr.Addr) instr.Addr {
@@ -121,7 +131,7 @@ func (c *Cpu) spInc(offset int) {
 }
 
 func (c *Cpu) pcInc(offset int) {
-	c.pc = (c.pc + offset) & (c.rmask[4] | 0xffff)
+	c.pc = (c.pc + offset) & (c.rmask[Eind] | 0xffff)
 }
 
 type OpFunc func(*Cpu, *instr.AddrMode, Memory)
@@ -494,11 +504,11 @@ func Std(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 }
 
 func Lds(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.reg[am.A1] = int(mem.ReadData(instr.Addr(cpu.ramp[0]) | am.A2))
+	cpu.reg[am.A1] = int(mem.ReadData(instr.Addr(cpu.ramp[RampD]) | am.A2))
 }
 
 func Sts(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	mem.WriteData(instr.Addr(cpu.ramp[0])|am.A2, byte(cpu.reg[am.A1]))
+	mem.WriteData(instr.Addr(cpu.ramp[RampD])|am.A2, byte(cpu.reg[am.A1]))
 }
 
 func Push(cpu *Cpu, am *instr.AddrMode, mem Memory) {
@@ -521,4 +531,20 @@ func Brbc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	if !cpu.flags[am.A1] {
 		cpu.pcInc(int(am.A2))
 	}
+}
+
+func Eijmp(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	cpu.pc = cpu.reg[30] | (cpu.reg[31] << 8) | cpu.ramp[Eind]
+}
+
+func Ijmp(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	cpu.pc = cpu.reg[30] | (cpu.reg[31] << 8)
+}
+
+func Jmp(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	cpu.pc = int(am.A1) & (cpu.rmask[Eind] | 0xffff)
+}
+
+func Rjmp(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	cpu.pcInc(int(am.A1))
 }
