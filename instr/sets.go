@@ -1,61 +1,344 @@
 package instr
 
-type Set interface {
-	DecodeMnem(Opcode) (mnem Mnemonic, opLen int)
-	DecodeAddr(Instruction) AddrMode
-	String() string
+type Set []bool
+
+func NewSetMinimal() Set {
+	// ATtiny11/12/15/28
+	set := make([]bool, NumMnems)
+	copy(set, setMinimal)
+	return set
 }
 
-type Minimal struct{}
-
-type Classic8K struct {
-	Minimal
+func NewSetClassic8k() Set {
+	// ATtiny22/26
+	set := make([]bool, NumMnems)
+	copy(set, setMinimal)
+	set[Adiw] = true
+	set[Sbiw] = true
+	set[Ijmp] = true
+	set[Icall] = true
+	set[LdClassic] = true
+	set[LdClassicReduced] = true
+	set[Ldd] = true
+	set[Lds] = true
+	set[StClassic] = true
+	set[StClassicReduced] = true
+	set[Std] = true
+	set[Sts] = true
+	set[Pop] = true
+	set[PopReduced] = true
+	set[Push] = true
+	set[PushReduced] = true
+	return set
 }
 
-type Classic128K struct {
-	Classic8K
+func NewSetClassic128k() Set {
+	// ATmega103/603
+	set := make([]bool, NumMnems)
+	copy(set, NewSetClassic8k())
+	set[Jmp] = true
+	set[Call] = true
+	// TODO: elpm only active when rampz present?
+	set[Elpm] = true
+	return set
 }
 
-type Enhanced8K struct {
-	Classic128K
+func NewSetEnhanced8k() Set {
+	// ATmega8/83/85/8515
+	set := make([]bool, NumMnems)
+	copy(set, NewSetClassic128k())
+	set[Mul] = true
+	set[Muls] = true
+	set[Mulsu] = true
+	set[Fmul] = true
+	set[Fmuls] = true
+	set[Fmulsu] = true
+	set[Movw] = true
+	set[LpmEnhanced] = true
+	set[Spm] = true
+	set[Elpm] = false
+	return set
 }
 
-type Enhanced128K struct {
-	Enhanced8K
+func NewSetEnhanced128k() Set {
+	set := make([]bool, NumMnems)
+	copy(set, NewSetEnhanced8k())
+	// TODO: elpm only active when rampz present?
+	set[Elpm] = true
+	set[ElpmEnhanced] = true
+	set[Break] = true
+	return set
 }
 
-type Enhanced4M struct {
-	Enhanced128K
+func NewSetEnhanced4m() Set {
+	set := make([]bool, NumMnems)
+	copy(set, NewSetEnhanced128k())
+	// TODO: elpm only active when rampz present?
+	set[Elpm] = true
+	set[ElpmEnhanced] = true
+	set[Eijmp] = true
+	set[Eicall] = true
+	return set
 }
 
-type Xmega struct {
-	Enhanced4M
+func NewSetXmega() Set {
+	set := make([]bool, NumMnems)
+	copy(set, NewSetEnhanced4m())
+	// TODO: elpm only active when rampz present?
+	set[Elpm] = true
+	set[ElpmEnhanced] = true
+	set[SpmXmega] = true
+	set[Des] = true
+	set[Lac] = true
+	set[Las] = true
+	set[Lat] = true
+	set[Xch] = true
+	return set
 }
 
-func (s Minimal) String() string {
-	return "Minimal"
+func NewSetReduced() Set {
+	// ATtiny4/5/9/10
+	set := make([]bool, NumMnems)
+	copy(set, setReduced)
+	return set
 }
 
-func (s Classic8K) String() string {
-	return "Classic8K"
+var setReduced = []bool{
+	true,  // Reserved
+	false, // Adc
+	true,  // AdcReduced
+	false, // Add
+	true,  // AddReduced
+	false, // Adiw
+	false, // And
+	true,  // AndReduced
+	true,  // Andi
+	false, // Asr
+	true,  // AsrReduced
+	true,  // Bclr
+	false, // Bld
+	true,  // BldReduced
+	true,  // Brbc
+	true,  // Brbs
+	true,  // Break
+	true,  // Bset
+	false, // Bst
+	true,  // BstReduced
+	false, // Call
+	true,  // Cbi
+	false, // Com
+	true,  // ComReduced
+	false, // Cp
+	true,  // CpReduced
+	false, // Cpc
+	true,  // CpcReduced
+	true,  // Cpi
+	false, // Cpse
+	true,  // CpseReduced
+	false, // Dec
+	true,  // DecReduced
+	false, // Des
+	false, // Eicall
+	false, // Eijmp
+	false, // Elpm
+	false, // ElpmEnhanced
+	false, // Eor
+	true,  // EorReduced
+	false, // Fmul
+	false, // Fmuls
+	false, // Fmulsu
+	true,  // Icall
+	true,  // Ijmp
+	false, // In
+	true,  // InReduced
+	false, // Inc
+	true,  // IncReduced
+	false, // Jmp
+	false, // Lac
+	false, // Las
+	false, // Lat
+	false, // LdClassic
+	true,  // LdClassicReduced
+	false, // LdMinimal
+	true,  // LdMinimalReduced
+	false, // Ldd
+	true,  // Ldi
+	false, // Lds
+	true,  // Lds16
+	false, // Lpm
+	false, // LpmEnhanced
+	false, // Lsr
+	true,  // LsrReduced
+	false, // Mov
+	true,  // MovReduced
+	false, // Movw
+	false, // Mul
+	false, // Muls
+	false, // Mulsu
+	false, // Neg
+	true,  // NegReduced
+	true,  // Nop
+	false, // Or
+	true,  // OrReduced
+	true,  // Ori
+	false, // Out
+	true,  // OutReduced
+	false, // Pop
+	true,  // PopReduced
+	false, // Push
+	true,  // PushReduced
+	true,  // Rcall
+	true,  // Ret
+	true,  // Reti
+	true,  // Rjmp
+	false, // Ror
+	true,  // RorReduced
+	false, // Sbc
+	true,  // SbcReduced
+	true,  // Sbci
+	true,  // Sbi
+	true,  // Sbic
+	true,  // Sbis
+	false, // Sbiw
+	false, // Sbrc
+	true,  // SbrcReduced
+	false, // Sbrs
+	true,  // SbrsReduced
+	true,  // Sleep
+	false, // Spm
+	false, // SpmXmega
+	false, // StClassic
+	true,  // StClassicReduced
+	false, // StMinimal
+	true,  // StMinimalReduced
+	false, // Std
+	false, // Sts
+	true,  // Sts16
+	false, // Sub
+	true,  // SubReduced
+	true,  // Subi
+	false, // Swap
+	true,  // SwapReduced
+	true,  // Wdr
+	false, // Xch
 }
 
-func (s Classic128K) String() string {
-	return "Classic128K"
-}
-
-func (s Enhanced8K) String() string {
-	return "Enhanced8K"
-}
-
-func (s Enhanced128K) String() string {
-	return "Enhanced128K"
-}
-
-func (s Enhanced4M) String() string {
-	return "Enhanced4M"
-}
-
-func (s Xmega) String() string {
-	return "Xmega"
+var setMinimal = []bool{
+	true,  // Reserved
+	true,  // Adc
+	true,  // AdcReduced
+	true,  // Add
+	true,  // AddReduced
+	false, // Adiw
+	true,  // And
+	true,  // AndReduced
+	true,  // Andi
+	true,  // Asr
+	true,  // AsrReduced
+	true,  // Bclr
+	true,  // Bld
+	true,  // BldReduced
+	true,  // Brbc
+	true,  // Brbs
+	false, // Break
+	true,  // Bset
+	true,  // Bst
+	true,  // BstReduced
+	false, // Call
+	true,  // Cbi
+	true,  // Com
+	true,  // ComReduced
+	true,  // Cp
+	true,  // CpReduced
+	true,  // Cpc
+	true,  // CpcReduced
+	true,  // Cpi
+	true,  // Cpse
+	true,  // CpseReduced
+	true,  // Dec
+	true,  // DecReduced
+	false, // Des
+	false, // Eicall
+	false, // Eijmp
+	false, // Elpm
+	false, // ElpmEnhanced
+	true,  // Eor
+	true,  // EorReduced
+	false, // Fmul
+	false, // Fmuls
+	false, // Fmulsu
+	false, // Icall
+	false, // Ijmp
+	true,  // In
+	true,  // InReduced
+	true,  // Inc
+	true,  // IncReduced
+	false, // Jmp
+	false, // Lac
+	false, // Las
+	false, // Lat
+	false, // LdClassic
+	false, // LdClassicReduced
+	true,  // LdMinimal
+	true,  // LdMinimalReduced
+	false, // Ldd
+	true,  // Ldi
+	false, // Lds
+	false, // Lds16
+	true,  // Lpm
+	false, // LpmEnhanced
+	true,  // Lsr
+	true,  // LsrReduced
+	true,  // Mov
+	true,  // MovReduced
+	false, // Movw
+	false, // Mul
+	false, // Muls
+	false, // Mulsu
+	true,  // Neg
+	true,  // NegReduced
+	true,  // Nop
+	true,  // Or
+	true,  // OrReduced
+	true,  // Ori
+	true,  // Out
+	true,  // OutReduced
+	false, // Pop
+	false, // PopReduced
+	false, // Push
+	false, // PushReduced
+	true,  // Rcall
+	true,  // Ret
+	true,  // Reti
+	true,  // Rjmp
+	true,  // Ror
+	true,  // RorReduced
+	true,  // Sbc
+	true,  // SbcReduced
+	true,  // Sbci
+	true,  // Sbi
+	true,  // Sbic
+	true,  // Sbis
+	false, // Sbiw
+	true,  // Sbrc
+	true,  // SbrcReduced
+	true,  // Sbrs
+	true,  // SbrsReduced
+	true,  // Sleep
+	false, // Spm
+	false, // SpmXmega
+	false, // StClassic
+	false, // StClassicReduced
+	true,  // StMinimal
+	true,  // StMinimalReduced
+	false, // Std
+	false, // Sts
+	false, // Sts16
+	true,  // Sub
+	true,  // SubReduced
+	true,  // Subi
+	true,  // Swap
+	true,  // SwapReduced
+	true,  // Wdr
+	false, // Xch
 }

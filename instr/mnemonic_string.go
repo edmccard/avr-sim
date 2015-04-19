@@ -4,9 +4,9 @@ package instr
 
 import "fmt"
 
-const _Mnemonic_name = "AdcAddAdiwAndAndiAsrBclrBldBrbcBrbsBreakBsetBstCallCbiComCpCpcCpiCpseDecDesEicallEijmpElpmEorFmulFmulsFmulsuIcallIjmpInIncJmpLacLasLatLdLddLdiLdsLpmLsrMovMovwMulMulsMulsuNegNopOrOriOutPopPushRcallRetRetiRjmpRorSbcSbciSbiSbicSbisSbiwSbrcSbrsSleepSpmStStdStsSubSubiSwapWdrXchReservedIllegal"
+const _Mnemonic_name = "ReservedAdcAdcReducedAddAddReducedAdiwAndAndReducedAndiAsrAsrReducedBclrBldBldReducedBrbcBrbsBreakBsetBstBstReducedCallCbiComComReducedCpCpReducedCpcCpcReducedCpiCpseCpseReducedDecDecReducedDesEicallEijmpElpmElpmEnhancedEorEorReducedFmulFmulsFmulsuIcallIjmpInInReducedIncIncReducedJmpLacLasLatLdClassicLdClassicReducedLdMinimalLdMinimalReducedLddLdiLdsLds16LpmLpmEnhancedLsrLsrReducedMovMovReducedMovwMulMulsMulsuNegNegReducedNopOrOrReducedOriOutOutReducedPopPopReducedPushPushReducedRcallRetRetiRjmpRorRorReducedSbcSbcReducedSbciSbiSbicSbisSbiwSbrcSbrcReducedSbrsSbrsReducedSleepSpmSpmXmegaStClassicStClassicReducedStMinimalStMinimalReducedStdStsSts16SubSubReducedSubiSwapSwapReducedWdrXchNumMnems"
 
-var _Mnemonic_index = [...]uint16{0, 3, 6, 10, 13, 17, 20, 24, 27, 31, 35, 40, 44, 47, 51, 54, 57, 59, 62, 65, 69, 72, 75, 81, 86, 90, 93, 97, 102, 108, 113, 117, 119, 122, 125, 128, 131, 134, 136, 139, 142, 145, 148, 151, 154, 158, 161, 165, 170, 173, 176, 178, 181, 184, 187, 191, 196, 199, 203, 207, 210, 213, 217, 220, 224, 228, 232, 236, 240, 245, 248, 250, 253, 256, 259, 263, 267, 270, 273, 281, 288}
+var _Mnemonic_index = [...]uint16{0, 8, 11, 21, 24, 34, 38, 41, 51, 55, 58, 68, 72, 75, 85, 89, 93, 98, 102, 105, 115, 119, 122, 125, 135, 137, 146, 149, 159, 162, 166, 177, 180, 190, 193, 199, 204, 208, 220, 223, 233, 237, 242, 248, 253, 257, 259, 268, 271, 281, 284, 287, 290, 293, 302, 318, 327, 343, 346, 349, 352, 357, 360, 371, 374, 384, 387, 397, 401, 404, 408, 413, 416, 426, 429, 431, 440, 443, 446, 456, 459, 469, 473, 484, 489, 492, 496, 500, 503, 513, 516, 526, 530, 533, 537, 541, 545, 549, 560, 564, 575, 580, 583, 591, 600, 616, 625, 641, 644, 647, 652, 655, 665, 669, 673, 684, 687, 690, 698}
 
 func (i Mnemonic) String() string {
 	if i < 0 || i+1 >= Mnemonic(len(_Mnemonic_index)) {

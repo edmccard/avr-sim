@@ -3,86 +3,124 @@ package instr
 type Mnemonic int
 
 const (
-	Adc Mnemonic = iota
+	Reserved Mnemonic = iota
+	Adc
+	AdcReduced
 	Add
+	AddReduced
 	Adiw
 	And
+	AndReduced
 	Andi
 	Asr
+	AsrReduced
 	Bclr
 	Bld
+	BldReduced
 	Brbc
 	Brbs
 	Break
 	Bset
 	Bst
+	BstReduced
 	Call
 	Cbi
 	Com
+	ComReduced
 	Cp
+	CpReduced
 	Cpc
+	CpcReduced
 	Cpi
 	Cpse
+	CpseReduced
 	Dec
+	DecReduced
 	Des
 	Eicall
 	Eijmp
 	Elpm
+	ElpmEnhanced
 	Eor
+	EorReduced
 	Fmul
 	Fmuls
 	Fmulsu
 	Icall
 	Ijmp
 	In
+	InReduced
 	Inc
+	IncReduced
 	Jmp
 	Lac
 	Las
 	Lat
-	Ld
+	LdClassic
+	LdClassicReduced
+	LdMinimal
+	LdMinimalReduced
 	Ldd
 	Ldi
 	Lds
+	Lds16
 	Lpm
+	LpmEnhanced
 	Lsr
+	LsrReduced
 	Mov
+	MovReduced
 	Movw
 	Mul
 	Muls
 	Mulsu
 	Neg
+	NegReduced
 	Nop
 	Or
+	OrReduced
 	Ori
 	Out
+	OutReduced
 	Pop
+	PopReduced
 	Push
+	PushReduced
 	Rcall
 	Ret
 	Reti
 	Rjmp
 	Ror
+	RorReduced
 	Sbc
+	SbcReduced
 	Sbci
 	Sbi
 	Sbic
 	Sbis
 	Sbiw
 	Sbrc
+	SbrcReduced
 	Sbrs
+	SbrsReduced
 	Sleep
 	Spm
-	St
+	SpmXmega
+	StClassic
+	StClassicReduced
+	StMinimal
+	StMinimalReduced
 	Std
 	Sts
+	Sts16
 	Sub
+	SubReduced
 	Subi
 	Swap
+	SwapReduced
 	Wdr
 	Xch
-	Reserved
-	Illegal
+	NumMnems
 )
 
 //go:generate stringer -type=Mnemonic
@@ -107,5 +145,4 @@ func (o Opcode) Nibble0() uint {
 
 type Instruction struct {
 	Op1, Op2 Opcode
-	Mnem     Mnemonic
 }

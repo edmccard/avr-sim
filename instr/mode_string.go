@@ -4,9 +4,9 @@ package instr
 
 import "fmt"
 
-const _Mode_name = "ModeA5B3ModeA6D5ModeB3ModeB3K7ModeB3D5ModeD3R3ModeD4K8ModeD4R4ModeD5ModeD5K16ModeD5R5ModeDDDDRRRRModeDDK6ModeElpmModeK4ModeK12ModeK22ModeLddStdModeLdStModeLpmModeNoneModeSpm"
+const _Mode_name = "ModeA5B3ModeA6D5ModeB3ModeB3K7ModeB3D5ModeD3R3ModeD4K7ModeD4K8ModeD4R4ModeD5ModeD5K16ModeD5R5ModeDDDDRRRRModeDDK6ModeElpmModeK4ModeK12ModeK22ModeLddStdModeLdStModeLpmModeNoneModeSpm"
 
-var _Mode_index = [...]uint8{0, 8, 16, 22, 30, 38, 46, 54, 62, 68, 77, 85, 97, 105, 113, 119, 126, 133, 143, 151, 158, 166, 173}
+var _Mode_index = [...]uint8{0, 8, 16, 22, 30, 38, 46, 54, 62, 70, 76, 85, 93, 105, 113, 121, 127, 134, 141, 151, 159, 166, 174, 181}
 
 func (i Mode) String() string {
 	if i < 0 || i+1 >= Mode(len(_Mode_index)) {

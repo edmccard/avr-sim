@@ -50,6 +50,7 @@ const (
 	ModeB3K7
 	ModeB3D5
 	ModeD3R3
+	ModeD4K7
 	ModeD4K8
 	ModeD4R4
 	ModeD5
@@ -130,6 +131,15 @@ func DecodeD3R3(inst Instruction) AddrMode {
 	return AddrMode{Addr(d), Addr(r), NoIndex}
 }
 
+// AddModeD4K7 returns AddrMode{d, k, NoIndex} (where 16<=d<=31 )
+// extracted from _____kkkddddkkkk.
+func DecodeD4K7(inst Instruction) AddrMode {
+	d := ((inst.Op1 & 0xf0) >> 4) | 0x10
+	ka := (inst.Op1 & 0x700) >> 4
+	kb := (inst.Op1 & 0xf)
+	return AddrMode{Addr(d), Addr(ka | kb), NoIndex}
+}
+
 // AddModeD4K8 returns AddrMode{d, K, NoIndex} (where 16<=d<=31 )
 // extracted from ____KKKKddddKKKK.
 func DecodeD4K8(inst Instruction) AddrMode {
@@ -189,10 +199,10 @@ func DecodeDDK6(inst Instruction) AddrMode {
 }
 
 // DecodeElpm returns AddrMode{d, 0, ireg} extracted from
-// _______ddddd____, or AddrMode{} for the no-argument form.
+// _______ddddd____, or AddrMode{0, 0, Z} for the no-argument form.
 func DecodeElpm(inst Instruction) AddrMode {
 	if inst.Op1 == 0x95d8 {
-		return AddrMode{}
+		return AddrMode{0, 0, Z}
 	}
 
 	d := (inst.Op1 & 0x1f0) >> 4
@@ -257,10 +267,10 @@ func DecodeLdSt(inst Instruction) AddrMode {
 }
 
 // DecodeLpm returns AddrMode{d, 0, ireg} extracted from
-// from _______ddddd____, or AddrMode{} for the no-argument form.
+// _______ddddd____.
 func DecodeLpm(inst Instruction) AddrMode {
 	if inst.Op1 == 0x95c8 {
-		return AddrMode{}
+		return AddrMode{0, 0, Z}
 	}
 
 	d := (inst.Op1 & 0x1f0) >> 4
@@ -276,106 +286,135 @@ func DecodeNone(inst Instruction) AddrMode {
 	return AddrMode{}
 }
 
-// DecodeSpm returns either AddrMode{} or AddrMode{0, 0, ZPostInc}
-// depending on the form of the Spm opcode
+// DecodeSpm returns AddrMode{0, 0, ZPostInc}.
 func DecodeSpm(inst Instruction) AddrMode {
-	if inst.Op1 == 0x95e8 {
-		return AddrMode{}
-	} else {
-		return AddrMode{0, 0, ZPostInc}
-	}
+	return AddrMode{0, 0, ZPostInc}
 }
 
 var OpModes = []Mode{
+	ModeNone,     // Reserved
 	ModeD5R5,     // Adc
+	ModeD5R5,     // AdcReduced
 	ModeD5R5,     // Add
+	ModeD5R5,     // AddReduced
 	ModeDDK6,     // Adiw
 	ModeD5R5,     // And
+	ModeD5R5,     // AndReduced
 	ModeD4K8,     // Andi
 	ModeD5,       // Asr
+	ModeD5,       // AsrReduced
 	ModeB3,       // Bclr
 	ModeB3D5,     // Bld
+	ModeB3D5,     // BldReduced
 	ModeB3K7,     // Brbc
 	ModeB3K7,     // Brbs
 	ModeNone,     // Break
 	ModeB3,       // Bset
 	ModeB3D5,     // Bst
+	ModeB3D5,     // BstReduced
 	ModeK22,      // Call
 	ModeA5B3,     // Cbi
 	ModeD5,       // Com
+	ModeD5,       // ComReduced
 	ModeD5R5,     // Cp
+	ModeD5R5,     // CpReduced
 	ModeD5R5,     // Cpc
+	ModeD5R5,     // CpcReduced
 	ModeD4K8,     // Cpi
 	ModeD5R5,     // Cpse
+	ModeD5R5,     // CpseReduced
 	ModeD5,       // Dec
+	ModeD5,       // DecReduced
 	ModeK4,       // Des
 	ModeNone,     // Eicall
 	ModeNone,     // Eijmp
 	ModeElpm,     // Elpm
+	ModeElpm,     // ElpmEnhanced
 	ModeD5R5,     // Eor
+	ModeD5R5,     // EorReduced
 	ModeD3R3,     // Fmul
 	ModeD3R3,     // Fmuls
 	ModeD3R3,     // Fmulsu
 	ModeNone,     // Icall
 	ModeNone,     // Ijmp
 	ModeA6D5,     // In
+	ModeA6D5,     // InReduced
 	ModeD5,       // Inc
+	ModeD5,       // IncReduced
 	ModeK22,      // Jmp
 	ModeD5,       // Lac
 	ModeD5,       // Las
 	ModeD5,       // Lat
-	ModeLdSt,     // Ld
+	ModeLdSt,     // LdClassic
+	ModeLdSt,     // LdClassicReduced
+	ModeLdSt,     // LdMinimal
+	ModeLdSt,     // LdMinimalReduced
 	ModeLddStd,   // Ldd
 	ModeD4K8,     // Ldi
 	ModeD5K16,    // Lds
+	ModeD4K7,     // Lds16
 	ModeLpm,      // Lpm
+	ModeLpm,      // LpmEnhanced
 	ModeD5,       // Lsr
+	ModeD5,       // LsrReduced
 	ModeD5R5,     // Mov
+	ModeD5R5,     // MovReduced
 	ModeDDDDRRRR, // Movw
 	ModeD5R5,     // Mul
 	ModeD4R4,     // Muls
 	ModeD3R3,     // Mulsu
 	ModeD5,       // Neg
+	ModeD5,       // NegReduced
 	ModeNone,     // Nop
 	ModeD5R5,     // Or
+	ModeD5R5,     // OrReduced
 	ModeD4K8,     // Ori
 	ModeA6D5,     // Out
+	ModeA6D5,     // OutReduced
 	ModeD5,       // Pop
+	ModeD5,       // PopReduced
 	ModeD5,       // Push
+	ModeD5,       // PushReduced
 	ModeK12,      // Rcall
 	ModeNone,     // Ret
 	ModeNone,     // Reti
 	ModeK12,      // Rjmp
 	ModeD5,       // Ror
+	ModeD5,       // RorReduced
 	ModeD5R5,     // Sbc
+	ModeD5R5,     // SbcReduced
 	ModeD4K8,     // Sbci
 	ModeA5B3,     // Sbi
 	ModeA5B3,     // Sbic
 	ModeA5B3,     // Sbis
 	ModeDDK6,     // Sbiw
 	ModeB3D5,     // Sbrc
+	ModeB3D5,     // SbrcReduced
 	ModeB3D5,     // Sbrs
+	ModeB3D5,     // SbrsReduced
 	ModeNone,     // Sleep
-	ModeSpm,      // Spm
-	ModeLdSt,     // St
+	ModeNone,     // Spm
+	ModeSpm,      // SpmXmega
+	ModeLdSt,     // StClassic
+	ModeLdSt,     // StClassicReduced
+	ModeLdSt,     // StMinimal
+	ModeLdSt,     // StMinimalReduced
 	ModeLddStd,   // Std
 	ModeD5K16,    // Sts
+	ModeD4K7,     // Sts16
 	ModeD5R5,     // Sub
+	ModeD5R5,     // SubReduced
 	ModeD4K8,     // Subi
 	ModeD5,       // Swap
+	ModeD5,       // SwapReduced
 	ModeNone,     // Wdr
 	ModeD5,       // Xch
-	ModeNone,     // Reserved
 }
 
 var decoders = []AddrDecoder{
 	DecodeA5B3, DecodeA6D5, DecodeB3, DecodeB3K7, DecodeB3D5,
-	DecodeD3R3, DecodeD4K8, DecodeD4R4, DecodeD5, DecodeD5K16,
-	DecodeD5R5, DecodeDDDDRRRR, DecodeDDK6, DecodeElpm, DecodeK4,
-	DecodeK12, DecodeK22, DecodeLddStd, DecodeLdSt, DecodeLpm,
-	DecodeNone, DecodeSpm,
-}
-
-func (s Minimal) DecodeAddr(inst Instruction) AddrMode {
-	return decoders[OpModes[inst.Mnem]](inst)
+	DecodeD3R3, DecodeD4K7, DecodeD4K8, DecodeD4R4, DecodeD5,
+	DecodeD5K16, DecodeD5R5, DecodeDDDDRRRR, DecodeDDK6,
+	DecodeElpm, DecodeK4, DecodeK12, DecodeK22, DecodeLddStd,
+	DecodeLdSt, DecodeLpm, DecodeNone, DecodeSpm,
 }
