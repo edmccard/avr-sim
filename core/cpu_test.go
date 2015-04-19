@@ -9,6 +9,8 @@ import (
 
 // tCpu wraps Cpu to implement Testable, and to simplify setting up
 // initial state for tests.
+// TODO: a "ControllableCpu" interface (but with a better name)
+//       so the branch functions work with either tCpu or tCpuDm
 type tCpu struct {
 	Cpu
 	am instr.AddrMode
@@ -94,26 +96,43 @@ func (tc *tCpu) setStatus(expStatus, mask byte) {
 
 type tDataMem struct {
 	readCount  int
-	readAddrs  [1]instr.Addr
+	readAddrs  [3]instr.Addr
+	readVals   [3]byte
 	writeCount int
-	writeAddrs [1]instr.Addr
-	writeVals  [1]byte
+	writeAddrs [3]instr.Addr
+	writeVals  [3]byte
 }
 
 func (tdm *tDataMem) ReadData(addr instr.Addr) byte {
-	if tdm.readCount < 1 {
-		tdm.readAddrs[0] = addr
+	var val byte
+	if tdm.readCount < 3 {
+		tdm.readAddrs[tdm.readCount] = addr
+		val = tdm.readVals[tdm.readCount]
 	}
 	tdm.readCount += 1
-	return 0xff
+	return val
+}
+
+func (tdm *tDataMem) SetReadData(vals []byte) {
+	for i, v := range vals {
+		tdm.readVals[i] = v
+	}
 }
 
 func (tdm *tDataMem) WriteData(addr instr.Addr, val byte) {
-	if tdm.writeCount < 1 {
-		tdm.writeAddrs[0] = addr
-		tdm.writeVals[0] = val
+	if tdm.writeCount < 3 {
+		tdm.writeAddrs[tdm.writeCount] = addr
+		tdm.writeVals[tdm.writeCount] = val
 	}
 	tdm.writeCount += 1
+}
+
+func (this *tDataMem) equals(that *tDataMem) bool {
+	return this.readCount == that.readCount &&
+		this.readAddrs == that.readAddrs &&
+		this.writeCount == that.writeCount &&
+		this.writeAddrs == that.writeAddrs &&
+		this.writeVals == that.writeVals
 }
 
 func (this *tDataMem) diff(that *tDataMem) string {
@@ -130,19 +149,23 @@ func (this *tDataMem) diff(that *tDataMem) string {
 		return "MEM: too few writes"
 	}
 	if this.readCount > 0 {
-		if this.readAddrs[0] != that.readAddrs[0] {
-			return fmt.Sprintf("MEM: expected read %04x got %04x",
-				this.readAddrs[0], that.readAddrs[0])
+		for i := range this.readAddrs {
+			if this.readAddrs[i] != that.readAddrs[i] {
+				return fmt.Sprintf("MEM: expected read #%d %04x got %04x",
+					i, this.readAddrs[i], that.readAddrs[i])
+			}
 		}
 	}
 	if this.writeCount > 0 {
-		if this.writeAddrs[0] != that.writeAddrs[0] {
-			return fmt.Sprintf("MEM: expected write at %04x got %04x",
-				this.writeAddrs[0], that.writeAddrs[0])
-		}
-		if this.writeVals[0] != that.writeVals[0] {
-			return fmt.Sprintf("MEM: expected write of %02x got %02x",
-				this.writeVals[0], that.writeVals[0])
+		for i := range this.writeAddrs {
+			if this.writeAddrs[i] != that.writeAddrs[i] {
+				return fmt.Sprintf("MEM: expected write #%d at %04x got %04x",
+					this.writeAddrs[i], that.writeAddrs[i])
+			}
+			if this.writeVals[0] != that.writeVals[0] {
+				return fmt.Sprintf("MEM: expected write #%d of %02x got %02x",
+					i, this.writeVals[i], that.writeVals[i])
+			}
 		}
 	}
 	return ""
@@ -155,7 +178,7 @@ type tCpuDm struct {
 
 func (tc tCpuDm) Equals(other testcase.Testable) bool {
 	o := other.(tCpuDm)
-	return tc.tCpu == o.tCpu && tc.dmem == o.dmem
+	return tc.tCpu == o.tCpu && tc.dmem.equals(&o.dmem)
 }
 
 func (tc tCpuDm) Diff(other testcase.Testable) interface{} {

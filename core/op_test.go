@@ -641,8 +641,8 @@ func TestJmpRjmp(t *testing.T) {
 
 func TestIjmpEijmp(t *testing.T) {
 	var cases = []struct {
-		op                   OpFunc
-		tag                  string
+		op            OpFunc
+		tag           string
 		eind, z, post int
 	}{
 		{Ijmp, "Ijmp", 0x00, 0x2000, 0x2000},

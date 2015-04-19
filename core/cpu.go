@@ -89,19 +89,16 @@ func (c *Cpu) ByteFromSreg() (b byte) {
 	return
 }
 
-func (c *Cpu) SetRamp(ireg instr.IndexReg, val byte) {
-	base := ireg.Base()
-	c.ramp[base] = (int(val) << 16) & c.rmask[base]
+func (c *Cpu) SetRamp(reg Ramp, val byte) {
+	c.ramp[reg] = (int(val) << 16) & c.rmask[reg]
 }
 
-func (c *Cpu) GetRamp(ireg instr.IndexReg) byte {
-	base := ireg.Base()
-	return byte((c.ramp[base] & c.rmask[base]) >> 16)
+func (c *Cpu) GetRamp(reg Ramp) byte {
+	return byte((c.ramp[reg] & c.rmask[reg]) >> 16)
 }
 
-func (c *Cpu) SetRMask(ireg instr.IndexReg, mask byte) {
-	base := ireg.Base()
-	c.rmask[base] = (int(mask) << 16)
+func (c *Cpu) setRmask(reg Ramp, mask byte) {
+	c.rmask[reg] = (int(mask) << 16)
 }
 
 func (c *Cpu) indirect(ireg instr.IndexReg, q instr.Addr) instr.Addr {
@@ -135,6 +132,9 @@ func (c *Cpu) pcInc(offset int) {
 }
 
 type OpFunc func(*Cpu, *instr.AddrMode, Memory)
+
+func Nop(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+}
 
 func Adc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	addition(cpu, am, cpu.flags[FlagC])
@@ -547,4 +547,76 @@ func Jmp(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 
 func Rjmp(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.pcInc(int(am.A1))
+}
+
+func Call(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	pushPC(cpu, mem)
+	Jmp(cpu, am, mem)
+}
+
+func Eicall(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	pushPC(cpu, mem)
+	Eijmp(cpu, am, mem)
+}
+
+func Icall(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	pushPC(cpu, mem)
+	Ijmp(cpu, am, mem)
+}
+
+func Rcall(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	pushPC(cpu, mem)
+	Rjmp(cpu, am, mem)
+}
+
+func pushPC(cpu *Cpu, mem Memory) {
+	mem.WriteData(instr.Addr(cpu.sp), byte(cpu.pc))
+	cpu.spInc(-1)
+	mem.WriteData(instr.Addr(cpu.sp), byte(cpu.pc>>8))
+	cpu.spInc(-1)
+	if cpu.rmask[Eind] != 0 {
+		mem.WriteData(instr.Addr(cpu.sp), byte(cpu.pc>>16))
+		cpu.spInc(-1)
+	}
+}
+
+func Ret(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	popPC(cpu, mem)
+}
+
+func Reti(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	popPC(cpu, mem)
+	cpu.flags[FlagI] = true
+}
+
+func popPC(cpu *Cpu, mem Memory) {
+	cpu.pc = 0
+	if cpu.rmask[Eind] != 0 {
+		cpu.spInc(1)
+		cpu.pc |= (int(mem.ReadData(instr.Addr(cpu.sp))) << 16)
+	}
+	cpu.spInc(1)
+	cpu.pc |= (int(mem.ReadData(instr.Addr(cpu.sp))) << 8)
+	cpu.spInc(1)
+	cpu.pc |= int(mem.ReadData(instr.Addr(cpu.sp)))
+}
+
+func Lac(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	// mask = reg
+	// reg = (z)
+	// (z) &= ^mask
+}
+
+func Las(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	// mask = reg
+	// reg = (z)
+	// (z) |= ^mask
+
+}
+
+func Lat(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	// mask = reg
+	// temp = (Z)
+	// reg = tmp
+	// (Z) ^= mask
 }
