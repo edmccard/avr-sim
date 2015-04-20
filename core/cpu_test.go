@@ -127,6 +127,10 @@ func (tdm *tDataMem) WriteData(addr instr.Addr, val byte) {
 	tdm.writeCount += 1
 }
 
+func (tdm *tDataMem) ReadProgram(addr instr.Addr) uint16 {
+	return 0
+}
+
 func (this *tDataMem) equals(that *tDataMem) bool {
 	return this.readCount == that.readCount &&
 		this.readAddrs == that.readAddrs &&

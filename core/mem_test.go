@@ -71,10 +71,10 @@ func TestLdSt(t *testing.T) {
 			for n, c := range indCase.data {
 				tag := fmt.Sprintf(" %s [%d]", ireg, n)
 				initCpu, expCpu := setupLoad(start, c)
-				Ld(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
+				ld(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
 				tree.Run("Ld"+tag, initCpu, expCpu)
 				initCpu, expCpu = setupStore(start, c)
-				St(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
+				st(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
 				tree.Run("St"+tag, initCpu, expCpu)
 			}
 		}
@@ -98,10 +98,10 @@ func TestLddStd(t *testing.T) {
 			start.am.A2 = c.disp
 			tag := fmt.Sprintf(" [%d]", n)
 			initCpu, expCpu := setupLoad(start, c.idxData)
-			Ldd(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
+			ldd(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
 			tree.Run("Ldd"+tag, initCpu, expCpu)
 			initCpu, expCpu = setupStore(start, c.idxData)
-			Std(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
+			std(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
 			tree.Run("Std"+tag, initCpu, expCpu)
 		}
 	}
@@ -142,27 +142,26 @@ func TestPushPop(t *testing.T) {
 			}
 		}
 	}
-	testcase.NewTree(t, "STK", run(pushCases, Push, "Push")).Start(tCpuDm{})
-	testcase.NewTree(t, "STK", run(popCases, Pop, "Pop")).Start(tCpuDm{})
+	testcase.NewTree(t, "STK", run(pushCases, push, "Push")).Start(tCpuDm{})
+	testcase.NewTree(t, "STK", run(popCases, pop, "Pop")).Start(tCpuDm{})
 }
 
 func TestCallRcall(t *testing.T) {
 	var cases = []struct {
-		op                       OpFunc
-		tag                      string
+		mnem                     instr.Mnemonic
 		rmask, pcPre, a1, pcPost int
 		spPre, spPost            int
 	}{
-		{Call, "Call", 0x00, 0x0000, 0x12345, 0x2345, 0x1fff, 0x1ffd},
-		{Call, "Call", 0x3f, 0x0000, 0x12345, 0x12345, 0x1fff, 0x1ffc},
-		{Call, "Call", 0x00, 0x0000, 0x2345, 0x2345, 0x1fff, 0x1ffd},
-		{Call, "Call", 0x3f, 0x0000, 0x2345, 0x2345, 0x1fff, 0x1ffc},
-		{Rcall, "Rcall", 0x00, 0x0000, -1, 0xffff, 0x1fff, 0x1ffd},
-		{Rcall, "Rcall", 0x3f, 0x0000, -1, 0x3fffff, 0x1fff, 0x1ffc},
-		{Rcall, "Rcall", 0x00, 0xffff, 1, 0x0000, 0x1fff, 0x1ffd},
-		{Rcall, "Rcall", 0x3f, 0xffff, 1, 0x10000, 0x1fff, 0x1ffc},
-		{Rcall, "Rcall", 0x00, 0x1000, 0x07ff, 0x17ff, 0x1fff, 0x1ffd},
-		{Rcall, "Rcall", 0x3f, 0x1000, 0x07ff, 0x17ff, 0x1fff, 0x1ffc},
+		{instr.Call, 0x00, 0x0000, 0x12345, 0x2345, 0x1fff, 0x1ffd},
+		{instr.Call, 0x3f, 0x0000, 0x12345, 0x12345, 0x1fff, 0x1ffc},
+		{instr.Call, 0x00, 0x0000, 0x2345, 0x2345, 0x1fff, 0x1ffd},
+		{instr.Call, 0x3f, 0x0000, 0x2345, 0x2345, 0x1fff, 0x1ffc},
+		{instr.Rcall, 0x00, 0x0000, -1, 0xffff, 0x1fff, 0x1ffd},
+		{instr.Rcall, 0x3f, 0x0000, -1, 0x3fffff, 0x1fff, 0x1ffc},
+		{instr.Rcall, 0x00, 0xffff, 1, 0x0000, 0x1fff, 0x1ffd},
+		{instr.Rcall, 0x3f, 0xffff, 1, 0x10000, 0x1fff, 0x1ffc},
+		{instr.Rcall, 0x00, 0x1000, 0x07ff, 0x17ff, 0x1fff, 0x1ffd},
+		{instr.Rcall, 0x3f, 0x1000, 0x07ff, 0x17ff, 0x1fff, 0x1ffc},
 	}
 	run := func(tree testcase.Tree, init, exp testcase.Testable) {
 		for n, c := range cases {
@@ -179,8 +178,8 @@ func TestCallRcall(t *testing.T) {
 			if c.rmask != 0 {
 				expCpu.dmem.WriteData(instr.Addr(c.spPre-2), byte(c.pcPre>>16))
 			}
-			c.op(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
-			tree.Run(fmt.Sprintf("%s [%d]", c.tag, n), initCpu, expCpu)
+			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
+			tree.Run(fmt.Sprintf("%s [%d]", c.mnem, n), initCpu, expCpu)
 		}
 	}
 	testcase.NewTree(t, "JMP", run).Start(tCpuDm{})
@@ -188,15 +187,14 @@ func TestCallRcall(t *testing.T) {
 
 func TestIcallEicall(t *testing.T) {
 	var cases = []struct {
-		op                   OpFunc
-		tag                  string
+		mnem                 instr.Mnemonic
 		eind, z, post        int
 		pcPre, spPre, spPost int
 	}{
-		{Icall, "Icall", 0x00, 0x2000, 0x2000, 0x2345, 0x1fff, 0x1ffd},
-		{Icall, "Icall", 0x3f, 0x2000, 0x2000, 0x2345, 0x1fff, 0x1ffc},
-		{Eicall, "Eicall", 0x00, 0x2000, 0x2000, 0x2345, 0x1fff, 0x1ffd},
-		{Eicall, "Eicall", 0x3f, 0x2000, 0x3f2000, 0x2345, 0x1fff, 0x1ffc},
+		{instr.Icall, 0x00, 0x2000, 0x2000, 0x2345, 0x1fff, 0x1ffd},
+		{instr.Icall, 0x3f, 0x2000, 0x2000, 0x2345, 0x1fff, 0x1ffc},
+		{instr.Eicall, 0x00, 0x2000, 0x2000, 0x2345, 0x1fff, 0x1ffd},
+		{instr.Eicall, 0x3f, 0x2000, 0x3f2000, 0x2345, 0x1fff, 0x1ffc},
 	}
 	run := func(tree testcase.Tree, init, exp testcase.Testable) {
 		for n, c := range cases {
@@ -215,8 +213,8 @@ func TestIcallEicall(t *testing.T) {
 			if c.eind != 0 {
 				expCpu.dmem.WriteData(instr.Addr(c.spPre-2), byte(c.pcPre>>16))
 			}
-			c.op(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
-			tree.Run(fmt.Sprintf("%s [%d]", c.tag, n), initCpu, expCpu)
+			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
+			tree.Run(fmt.Sprintf("%s [%d]", c.mnem, n), initCpu, expCpu)
 		}
 	}
 	testcase.NewTree(t, "JMP", run).Start(tCpuDm{})
@@ -224,14 +222,13 @@ func TestIcallEicall(t *testing.T) {
 
 func TestRetReti(t *testing.T) {
 	var cases = []struct {
-		op                       OpFunc
-		tag                      string
+		mnem                     instr.Mnemonic
 		emask, pc, spPre, spPost int
 	}{
-		{Ret, "Ret", 0x00, 0x2345, 0x1ffd, 0x1fff},
-		{Reti, "Reti", 0x00, 0x2345, 0x1ffd, 0x1fff},
-		{Ret, "Ret", 0x3f, 0x12345, 0x1ffc, 0x1fff},
-		{Reti, "Reti", 0x3f, 0x12345, 0x1ffc, 0x1fff},
+		{instr.Ret, 0x00, 0x2345, 0x1ffd, 0x1fff},
+		{instr.Reti, 0x00, 0x2345, 0x1ffd, 0x1fff},
+		{instr.Ret, 0x3f, 0x12345, 0x1ffc, 0x1fff},
+		{instr.Reti, 0x3f, 0x12345, 0x1ffc, 0x1fff},
 	}
 	run := func(tree testcase.Tree, init, exp testcase.Testable) {
 		for n, c := range cases {
@@ -253,11 +250,11 @@ func TestRetReti(t *testing.T) {
 			}
 			expCpu.dmem.ReadData(instr.Addr(c.spPost - 1))
 			expCpu.dmem.ReadData(instr.Addr(c.spPost))
-			if c.tag == "Reti" {
+			if c.mnem == instr.Reti {
 				expCpu.SetFlag(FlagI, true)
 			}
-			c.op(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
-			tree.Run(fmt.Sprintf("%s [%d]", c.tag, n), initCpu, expCpu)
+			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
+			tree.Run(fmt.Sprintf("%s [%d]", c.mnem, n), initCpu, expCpu)
 		}
 	}
 	testcase.NewTree(t, "JMP", run).Start(tCpuDm{})

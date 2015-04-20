@@ -22,23 +22,23 @@ type aluCase struct {
 
 var alucases = []struct {
 	label    string
-	op       OpFunc
+	mnem     instr.Mnemonic
 	tag      string
 	fmask    int
 	run      aluTest
 	branches []testcase.Branch
 	data     []aluData
 }{
-	{"+-*", Add, "Add", 0x3f, testD5R5,
+	{"+-*", instr.Add, "Add", 0x3f, testD5R5,
 		[]testcase.Branch{brD5R5, brCarry},
 		addCClrOrIgnored},
-	{"+-*", Adc, "C0 Adc", 0x3f, testD5R5,
+	{"+-*", instr.Adc, "C0 Adc", 0x3f, testD5R5,
 		[]testcase.Branch{brD5R5, brCarry, ifCClr},
 		addCClrOrIgnored},
-	{"+-*", Adc, "C1 Adc", 0x3f, testD5R5,
+	{"+-*", instr.Adc, "C1 Adc", 0x3f, testD5R5,
 		[]testcase.Branch{brD5R5, brCarry, ifCSet},
 		addCSet},
-	{"+-*", Adiw, "Adiw", 0x1f, testDDK6,
+	{"+-*", instr.Adiw, "Adiw", 0x1f, testDDK6,
 		[]testcase.Branch{brCarry},
 		[]aluData{
 			{0x00, 0x0000, 0x01, 0x0001},
@@ -47,16 +47,16 @@ var alucases = []struct {
 			{0x03, 0xffc2, 0x3e, 0x0000},
 			{0x0c, 0x7fc2, 0x3e, 0x8000},
 			{0x14, 0x8000, 0x00, 0x8000}}},
-	{"+-*", nil, "SubIgnoreCarry", 0x3f, testSubIgnoreCarry,
+	{"+-*", 0, "SubIgnoreCarry", 0x3f, testSubIgnoreCarry,
 		[]testcase.Branch{brD5R5, brCarry},
 		subCClrOrIgnored},
-	{"+-*", nil, "SubRespectCarry", 0x3f, testSubRespectCarry,
+	{"+-*", 0, "SubRespectCarry", 0x3f, testSubRespectCarry,
 		[]testcase.Branch{brD5R5, brZero, brCarry, ifCClr},
 		subCClrOrIgnored},
-	{"+-*", nil, "SubRespectCarry", 0x3f, testSubRespectCarry,
+	{"+-*", 0, "SubRespectCarry", 0x3f, testSubRespectCarry,
 		[]testcase.Branch{brD5R5, brZero, brCarry, ifCSet},
 		subCSet},
-	{"+-*", Sbiw, "Sbiw", 0x1f, testDDK6,
+	{"+-*", instr.Sbiw, "Sbiw", 0x1f, testDDK6,
 		[]testcase.Branch{brCarry},
 		[]aluData{
 			{0x00, 0x0001, 0x00, 0x0001},
@@ -64,28 +64,28 @@ var alucases = []struct {
 			{0x14, 0x8000, 0x00, 0x8000},
 			{0x15, 0x0000, 0x01, 0xffff},
 			{0x18, 0x8000, 0x01, 0x7fff}}},
-	{"+-*", Mul, "Mul", 0x03, testMul,
+	{"+-*", instr.Mul, "Mul", 0x03, testMul,
 		[]testcase.Branch{brMul5},
 		[]aluData{
 			{0x00, 0xff, 0x01, 0x00ff},
 			{0x00, 0x7f, 0x7f, 0x3f01},
 			{0x01, 0xff, 0xff, 0xfe01},
 			{0x02, 0xff, 0x00, 0x0000}}},
-	{"+-*", Muls, "Muls", 0x03, testMul,
+	{"+-*", instr.Muls, "Muls", 0x03, testMul,
 		[]testcase.Branch{brMul34},
 		[]aluData{
 			{0x00, 0xff, 0xff, 0x0001},
 			{0x00, 0x7f, 0x7f, 0x3f01},
 			{0x01, 0xff, 0x01, 0xffff},
 			{0x02, 0xff, 0x00, 0x0000}}},
-	{"+-*", Mulsu, "Mulsu", 0x03, testMul,
+	{"+-*", instr.Mulsu, "Mulsu", 0x03, testMul,
 		[]testcase.Branch{brMul34},
 		[]aluData{
 			{0x00, 0x01, 0xff, 0x00ff},
 			{0x00, 0x7f, 0x7f, 0x3f01},
 			{0x01, 0xff, 0xff, 0xff01},
 			{0x02, 0xff, 0x00, 0x0000}}},
-	{"+-*", Fmul, "Fmul", 0x03, testMul,
+	{"+-*", instr.Fmul, "Fmul", 0x03, testMul,
 		[]testcase.Branch{brMul34},
 		[]aluData{
 			{0x00, 0xff, 0x01, 0x01fe},
@@ -93,14 +93,14 @@ var alucases = []struct {
 			{0x01, 0xd0, 0xd0, 0x5200},
 			{0x01, 0xe0, 0xe0, 0x8800},
 			{0x02, 0xff, 0x00, 0x0000}}},
-	{"+-*", Fmuls, "Fmuls", 0x03, testMul,
+	{"+-*", instr.Fmuls, "Fmuls", 0x03, testMul,
 		[]testcase.Branch{brMul34},
 		[]aluData{
 			{0x00, 0x7f, 0x7f, 0x7e02},
 			{0x00, 0x80, 0x80, 0x8000},
 			{0x01, 0xff, 0x01, 0xfffe},
 			{0x02, 0xff, 0x00, 0x0000}}},
-	{"+-*", Fmulsu, "Fmulsu", 0x03, testMul,
+	{"+-*", instr.Fmulsu, "Fmulsu", 0x03, testMul,
 		[]testcase.Branch{brMul34},
 		[]aluData{
 			{0x00, 0x01, 0xff, 0x01fe},
@@ -108,25 +108,25 @@ var alucases = []struct {
 			{0x01, 0xff, 0xff, 0xfe02},
 			{0x01, 0x9c, 0xaa, 0x7b30},
 			{0x02, 0xff, 0x00, 0x0000}}},
-	{"&|^", And, "And", 0x1e, testD5R5,
+	{"&|^", instr.And, "And", 0x1e, testD5R5,
 		[]testcase.Branch{brD5R5},
 		andData},
-	{"&|^", Andi, "Andi", 0x1e, testD4K8,
+	{"&|^", instr.Andi, "Andi", 0x1e, testD4K8,
 		nil,
 		andData},
-	{"&|^", Or, "Or", 0x1e, testD5R5,
+	{"&|^", instr.Or, "Or", 0x1e, testD5R5,
 		[]testcase.Branch{brD5R5},
 		orData},
-	{"&|^", Ori, "Ori", 0x1e, testD4K8,
+	{"&|^", instr.Ori, "Ori", 0x1e, testD4K8,
 		nil,
 		orData},
-	{"&|^", Eor, "Eor", 0x1e, testD5R5,
+	{"&|^", instr.Eor, "Eor", 0x1e, testD5R5,
 		[]testcase.Branch{brD5R5},
 		[]aluData{
 			{0x00, 0x01, 0x03, 0x02},
 			{0x02, 0xaa, 0xaa, 0x00},
 			{0x14, 0xaa, 0x55, 0xff}}},
-	{"RMW", Asr, "Asr", 0x1f, testD5,
+	{"RMW", instr.Asr, "Asr", 0x1f, testD5,
 		[]testcase.Branch{brCarry},
 		[]aluData{
 			{0x00, 0x02, 0x02, 0x01},
@@ -135,20 +135,20 @@ var alucases = []struct {
 			{0x15, 0x81, 0x81, 0xc0},
 			{0x19, 0x03, 0x03, 0x01},
 			{0x1b, 0x01, 0x01, 0x00}}},
-	{"RMW", Lsr, "Lsr", 0x1f, testD5,
+	{"RMW", instr.Lsr, "Lsr", 0x1f, testD5,
 		[]testcase.Branch{brCarry},
 		[]aluData{
 			{0x00, 0x02, 0x02, 0x01},
 			{0x02, 0x00, 0x00, 0x00},
 			{0x19, 0x03, 0x03, 0x01},
 			{0x1b, 0x01, 0x01, 0x00}}},
-	{"RMW", Com, "Com", 0x1f, testD5,
+	{"RMW", instr.Com, "Com", 0x1f, testD5,
 		nil,
 		[]aluData{
 			{0x01, 0x80, 0x80, 0x7f},
 			{0x03, 0xff, 0xff, 0x00},
 			{0x15, 0x00, 0x00, 0xff}}},
-	{"RMW", Neg, "Neg", 0x3f, testD5,
+	{"RMW", instr.Neg, "Neg", 0x3f, testD5,
 		nil,
 		[]aluData{
 			{0x01, 0x90, 0x90, 0x70},
@@ -157,49 +157,49 @@ var alucases = []struct {
 			{0x15, 0x10, 0x10, 0xf0},
 			{0x21, 0x81, 0x81, 0x7f},
 			{0x35, 0x01, 0x01, 0xff}}},
-	{"RMW", Swap, "Swap", 0x00, testD5,
+	{"RMW", instr.Swap, "Swap", 0x00, testD5,
 		nil,
 		[]aluData{
 			{0x00, 0xff, 0xff, 0xff},
 			{0x00, 0x00, 0x00, 0x00},
 			{0x00, 0x12, 0x12, 0x21}}},
-	{"RMW", Dec, "Dec", 0x1e, testD5,
+	{"RMW", instr.Dec, "Dec", 0x1e, testD5,
 		nil,
 		[]aluData{
 			{0x00, 0x02, 0x02, 0x01},
 			{0x02, 0x01, 0x01, 0x00},
 			{0x14, 0x00, 0x00, 0xff},
 			{0x18, 0x80, 0x80, 0x7f}}},
-	{"RMW", Inc, "Inc", 0x1e, testD5,
+	{"RMW", instr.Inc, "Inc", 0x1e, testD5,
 		nil,
 		[]aluData{
 			{0x00, 0x00, 0x00, 0x01},
 			{0x02, 0xff, 0xff, 0x00},
 			{0x0c, 0x7f, 0x7f, 0x80},
 			{0x14, 0x80, 0x80, 0x81}}},
-	{"RMW", Ror, "C0 Ror", 0x1f, testD5,
+	{"RMW", instr.Ror, "C0 Ror", 0x1f, testD5,
 		[]testcase.Branch{brCarry, ifCClr},
 		[]aluData{
 			{0x00, 0x02, 0x02, 0x01},
 			{0x02, 0x00, 0x00, 0x00},
 			{0x19, 0x03, 0x03, 0x01},
 			{0x1b, 0x01, 0x01, 0x00}}},
-	{"RMW", Ror, "C1 Ror", 0x1f, testD5,
+	{"RMW", instr.Ror, "C1 Ror", 0x1f, testD5,
 		[]testcase.Branch{brCarry, ifCSet},
 		[]aluData{
 			{0x0c, 0x00, 0x00, 0x80},
 			{0x15, 0x01, 0x01, 0x80}}},
-	{"<->", Mov, "Mov", 0x00, testD5R5,
+	{"<->", instr.Mov, "Mov", 0x00, testD5R5,
 		[]testcase.Branch{brD5R5},
 		[]aluData{
 			{0x00, 0x00, 0x10, 0x10},
 			{0x00, 0x10, 0x10, 0x10}}},
-	{"<->", Ldi, "Ldi", 0x00, testD4K8,
+	{"<->", instr.Ldi, "Ldi", 0x00, testD4K8,
 		nil,
 		[]aluData{
 			{0x00, 0x00, 0xff, 0xff},
 			{0x00, 0xff, 0x00, 0x00}}},
-	{"<->", Movw, "Movw", 0x00, testMovw,
+	{"<->", instr.Movw, "Movw", 0x00, testMovw,
 		[]testcase.Branch{brRegPair},
 		[]aluData{
 			{0x00, 0x0000, 0x1234, 0x1234},
@@ -366,9 +366,9 @@ func brRegPair(tree testcase.Tree, init, exp testcase.Testable) {
 	tree.Run("r1:r0,r1:r0", initTc, exp)
 }
 
-type aluTest func(aluCase, OpFunc, string)
+type aluTest func(aluCase, instr.Mnemonic)
 
-func testD5R5(ac aluCase, op OpFunc, tag string) {
+func testD5R5(ac aluCase, mnem instr.Mnemonic) {
 	initCpu := ac.init
 	d := initCpu.am.A1
 	r := initCpu.am.A2
@@ -381,33 +381,33 @@ func testD5R5(ac aluCase, op OpFunc, tag string) {
 	expCpu.reg[r] = ac.v2
 	expCpu.reg[d] = ac.res
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
-	op(&initCpu.Cpu, &initCpu.am, nil)
-	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
+	opFuncs[mnem](&initCpu.Cpu, &initCpu.am, nil)
+	ac.t.Run(fmt.Sprintf("%s [%d]", mnem, ac.n), initCpu, expCpu)
 }
 
-func testD5(ac aluCase, op OpFunc, tag string) {
+func testD5(ac aluCase, mnem instr.Mnemonic) {
 	initCpu := ac.init
 	d := initCpu.am.A1
 	initCpu.reg[d] = ac.v1
 	expCpu := ac.init
 	expCpu.reg[d] = ac.res
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
-	op(&initCpu.Cpu, &initCpu.am, nil)
-	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
+	opFuncs[mnem](&initCpu.Cpu, &initCpu.am, nil)
+	ac.t.Run(fmt.Sprintf("%s [%d]", mnem, ac.n), initCpu, expCpu)
 }
 
-func testD4K8(ac aluCase, op OpFunc, tag string) {
+func testD4K8(ac aluCase, mnem instr.Mnemonic) {
 	expCpu := ac.init
 	expCpu.reg[16] = ac.res
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
 	initCpu := ac.init
 	initCpu.reg[16] = ac.v1
 	initCpu.am = instr.AddrMode{16, instr.Addr(ac.v2), instr.NoIndex}
-	op(&initCpu.Cpu, &initCpu.am, nil)
-	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
+	opFuncs[mnem](&initCpu.Cpu, &initCpu.am, nil)
+	ac.t.Run(fmt.Sprintf("%s [%d]", mnem, ac.n), initCpu, expCpu)
 }
 
-func testDDK6(ac aluCase, op OpFunc, tag string) {
+func testDDK6(ac aluCase, mnem instr.Mnemonic) {
 	expCpu := ac.init
 	expCpu.reg[24] = ac.res & 0xff
 	expCpu.reg[25] = ac.res >> 8
@@ -416,11 +416,11 @@ func testDDK6(ac aluCase, op OpFunc, tag string) {
 	initCpu.reg[24] = ac.v1 & 0xff
 	initCpu.reg[25] = ac.v1 >> 8
 	initCpu.am = instr.AddrMode{24, instr.Addr(ac.v2), instr.NoIndex}
-	op(&initCpu.Cpu, &initCpu.am, nil)
-	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
+	opFuncs[mnem](&initCpu.Cpu, &initCpu.am, nil)
+	ac.t.Run(fmt.Sprintf("%s [%d]", mnem, ac.n), initCpu, expCpu)
 }
 
-func testMul(ac aluCase, op OpFunc, tag string) {
+func testMul(ac aluCase, mnem instr.Mnemonic) {
 	initCpu := ac.init
 	d := initCpu.am.A1
 	r := initCpu.am.A2
@@ -435,11 +435,11 @@ func testMul(ac aluCase, op OpFunc, tag string) {
 	expCpu.reg[0] = ac.res & 0xff
 	expCpu.reg[1] = ac.res >> 8
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
-	op(&initCpu.Cpu, &initCpu.am, nil)
-	ac.t.Run(fmt.Sprintf("%s [%d]", tag, ac.n), initCpu, expCpu)
+	opFuncs[mnem](&initCpu.Cpu, &initCpu.am, nil)
+	ac.t.Run(fmt.Sprintf("%s [%d]", mnem, ac.n), initCpu, expCpu)
 }
 
-func testMovw(ac aluCase, op OpFunc, tag string) {
+func testMovw(ac aluCase, mnem instr.Mnemonic) {
 	initCpu := ac.init
 	d := initCpu.am.A1
 	r := initCpu.am.A2
@@ -455,26 +455,26 @@ func testMovw(ac aluCase, op OpFunc, tag string) {
 	expCpu.reg[r+1] = ac.v2 >> 8
 	expCpu.reg[d] = ac.res & 0xff
 	expCpu.reg[d+1] = ac.res >> 8
-	Movw(&initCpu.Cpu, &initCpu.am, nil)
+	movw(&initCpu.Cpu, &initCpu.am, nil)
 	ac.t.Run(fmt.Sprintf("Movw [%d]", ac.n), initCpu, expCpu)
 }
 
-func testSubIgnoreCarry(ac aluCase, op OpFunc, tag string) {
-	testD5R5(ac, Sub, "Sub")
-	testD4K8(ac, Subi, "Subi")
+func testSubIgnoreCarry(ac aluCase, mnem instr.Mnemonic) {
+	testD5R5(ac, instr.Sub)
+	testD4K8(ac, instr.Subi)
 	ac.res = ac.v1
-	testD4K8(ac, Cpi, "Cpi")
-	testD5R5(ac, Cp, "Cp")
+	testD4K8(ac, instr.Cpi)
+	testD5R5(ac, instr.Cp)
 }
 
-func testSubRespectCarry(ac aluCase, op OpFunc, tag string) {
+func testSubRespectCarry(ac aluCase, mnem instr.Mnemonic) {
 	if ac.res == 0 && !ac.init.GetFlag(FlagZ) {
 		ac.status -= 2
 	}
-	testD5R5(ac, Sbc, "Sbc")
-	testD4K8(ac, Sbci, "Sbci")
+	testD5R5(ac, instr.Sbc)
+	testD4K8(ac, instr.Sbci)
 	ac.res = ac.v1
-	testD5R5(ac, Cpc, "Cpc")
+	testD5R5(ac, instr.Cpc)
 }
 
 func TestALU(t *testing.T) {
@@ -482,7 +482,7 @@ func TestALU(t *testing.T) {
 		run := func(tree testcase.Tree, init, exp testcase.Testable) {
 			for n, c := range opcase.data {
 				ac := aluCase{tree, init.(tCpu), opcase.fmask, c, n}
-				opcase.run(ac, opcase.op, opcase.tag)
+				opcase.run(ac, opcase.mnem)
 			}
 		}
 		branches := []testcase.Branch{brAllFlags}
@@ -538,10 +538,10 @@ func TestBranch(t *testing.T) {
 		} else {
 			expCpuC.pc = jump
 		}
-		Brbs(&initCpu.Cpu, &initCpu.am, nil)
+		brbs(&initCpu.Cpu, &initCpu.am, nil)
 		tree.Run("Brbs", initCpu, expCpuS)
 		initCpu = init.(tCpu)
-		Brbc(&initCpu.Cpu, &initCpu.am, nil)
+		brbc(&initCpu.Cpu, &initCpu.am, nil)
 		tree.Run("Brbc", initCpu, expCpuC)
 	}
 	branches := []testcase.Branch{brAllFlags, brBit, brBitFlag, brOffset, run}
@@ -555,12 +555,12 @@ func TestFlag(t *testing.T) {
 		bit := Flag(initCpu.am.A1)
 		expCpuS := initCpu
 		expCpuS.SetFlag(bit, true)
-		Bset(&initCpu.Cpu, &initCpu.am, nil)
+		bset(&initCpu.Cpu, &initCpu.am, nil)
 		tree.Run("Bset", initCpu, expCpuS)
 		initCpu = init.(tCpu)
 		expCpuC := initCpu
 		expCpuC.SetFlag(bit, false)
-		Bclr(&initCpu.Cpu, &initCpu.am, nil)
+		bclr(&initCpu.Cpu, &initCpu.am, nil)
 		tree.Run("Blcr", initCpu, expCpuC)
 	}
 	testcase.NewTree(t, "FLAG", brAllFlags, brBit, run).Start(tCpu{})
@@ -582,7 +582,7 @@ func TestBst(t *testing.T) {
 		mask := 1 << uint(initCpu.am.A1)
 		expCpu := initCpu
 		expCpu.SetFlag(FlagT, (initCpu.reg[0]&mask) != 0)
-		Bst(&initCpu.Cpu, &initCpu.am, nil)
+		bst(&initCpu.Cpu, &initCpu.am, nil)
 		tree.Run("Bst", initCpu, expCpu)
 	}
 	testcase.NewTree(t, "XFR", brAllFlags, brBit, brSetClr, run).Start(tCpu{})
@@ -601,7 +601,7 @@ func TestBld(t *testing.T) {
 			initCpu.reg[0] = 0xff
 			expCpu.reg[0] = ^(1 << bit) & 0xff
 		}
-		Bld(&initCpu.Cpu, &initCpu.am, nil)
+		bld(&initCpu.Cpu, &initCpu.am, nil)
 		tree.Run("Bld", initCpu, expCpu)
 	}
 	testcase.NewTree(t, "XFR", brAllFlags, brBit, brXfer, run).Start(tCpu{})
@@ -609,20 +609,19 @@ func TestBld(t *testing.T) {
 
 func TestJmpRjmp(t *testing.T) {
 	var cases = []struct {
-		op                       OpFunc
-		tag                      string
+		mnem                     instr.Mnemonic
 		rmask, pcPre, a1, pcPost int
 	}{
-		{Jmp, "Jmp", 0x00, 0x0000, 0x10000, 0x0000},
-		{Jmp, "Jmp", 0x3f, 0x0000, 0x10000, 0x10000},
-		{Jmp, "Jmp", 0x00, 0x0000, 0x2000, 0x2000},
-		{Jmp, "Jmp", 0x3f, 0x0000, 0x2000, 0x2000},
-		{Rjmp, "Rjmp", 0x00, 0x0000, -1, 0xffff},
-		{Rjmp, "Rjmp", 0x3f, 0x0000, -1, 0x3fffff},
-		{Rjmp, "Rjmp", 0x00, 0xffff, 1, 0x0000},
-		{Rjmp, "Rjmp", 0x3f, 0xffff, 1, 0x10000},
-		{Rjmp, "Rjmp", 0x00, 0x1000, 0x07ff, 0x17ff},
-		{Rjmp, "Rjmp", 0x3f, 0x1000, 0x07ff, 0x17ff},
+		{instr.Jmp, 0x00, 0x0000, 0x10000, 0x0000},
+		{instr.Jmp, 0x3f, 0x0000, 0x10000, 0x10000},
+		{instr.Jmp, 0x00, 0x0000, 0x2000, 0x2000},
+		{instr.Jmp, 0x3f, 0x0000, 0x2000, 0x2000},
+		{instr.Rjmp, 0x00, 0x0000, -1, 0xffff},
+		{instr.Rjmp, 0x3f, 0x0000, -1, 0x3fffff},
+		{instr.Rjmp, 0x00, 0xffff, 1, 0x0000},
+		{instr.Rjmp, 0x3f, 0xffff, 1, 0x10000},
+		{instr.Rjmp, 0x00, 0x1000, 0x07ff, 0x17ff},
+		{instr.Rjmp, 0x3f, 0x1000, 0x07ff, 0x17ff},
 	}
 	run := func(tree testcase.Tree, init, exp testcase.Testable) {
 		for n, c := range cases {
@@ -632,8 +631,8 @@ func TestJmpRjmp(t *testing.T) {
 			initCpu.rmask[Eind] = c.rmask << 16
 			expCpu := initCpu
 			expCpu.pc = c.pcPost
-			c.op(&initCpu.Cpu, &initCpu.am, nil)
-			tree.Run(fmt.Sprintf("%s [%d]", c.tag, n), initCpu, expCpu)
+			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.am, nil)
+			tree.Run(fmt.Sprintf("%s [%d]", c.mnem, n), initCpu, expCpu)
 		}
 	}
 	testcase.NewTree(t, "JMP", brAllFlags, run).Start(tCpu{})
@@ -641,14 +640,13 @@ func TestJmpRjmp(t *testing.T) {
 
 func TestIjmpEijmp(t *testing.T) {
 	var cases = []struct {
-		op            OpFunc
-		tag           string
+		mnem          instr.Mnemonic
 		eind, z, post int
 	}{
-		{Ijmp, "Ijmp", 0x00, 0x2000, 0x2000},
-		{Ijmp, "Ijmp", 0x3f, 0x2000, 0x2000},
-		{Eijmp, "Eijmp", 0x00, 0x2000, 0x2000},
-		{Eijmp, "Eijmp", 0x3f, 0x2000, 0x3f2000},
+		{instr.Ijmp, 0x00, 0x2000, 0x2000},
+		{instr.Ijmp, 0x3f, 0x2000, 0x2000},
+		{instr.Eijmp, 0x00, 0x2000, 0x2000},
+		{instr.Eijmp, 0x3f, 0x2000, 0x3f2000},
 	}
 	run := func(tree testcase.Tree, init, exp testcase.Testable) {
 		for n, c := range cases {
@@ -659,8 +657,8 @@ func TestIjmpEijmp(t *testing.T) {
 			initCpu.ramp[Eind] = c.eind << 16
 			expCpu := initCpu
 			expCpu.pc = c.post
-			c.op(&initCpu.Cpu, &initCpu.am, nil)
-			tree.Run(fmt.Sprintf("%s [%d]", c.tag, n), initCpu, expCpu)
+			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.am, nil)
+			tree.Run(fmt.Sprintf("%s [%d]", c.mnem, n), initCpu, expCpu)
 		}
 	}
 	testcase.NewTree(t, "JMP", brAllFlags, run).Start(tCpu{})
