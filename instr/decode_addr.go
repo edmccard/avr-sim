@@ -78,179 +78,220 @@ type AddrMode struct {
 	Ireg   IndexReg
 }
 
-type AddrDecoder func(Instruction) AddrMode
+type AddrDecoder func(*AddrMode, Opcode, Opcode)
 
 // DecodeA5B3 returns AddrMode{A, b, NoIndex} extracted from
 // ________AAAAAbbb.
-func DecodeA5B3(inst Instruction) AddrMode {
-	A := (inst.Op1 & 0xf8) >> 3
-	b := (inst.Op1 & 0x7)
-	return AddrMode{Addr(A), Addr(b), NoIndex}
+func DecodeA5B3(am *AddrMode, op1, op2 Opcode) {
+	A := (op1 & 0xf8) >> 3
+	b := (op1 & 0x7)
+	am.A1 = Addr(A)
+	am.A2 = Addr(b)
+	am.Ireg = NoIndex
 }
 
 // DecodeA6D5 returns AddrMode{A, d, NoIndex} extracted from
 // _____AAdddddAAAA.
-func DecodeA6D5(inst Instruction) AddrMode {
-	Aa := (inst.Op1 & 0x600) >> 5
-	Ab := (inst.Op1 & 0xf)
-	d := (inst.Op1 & 0x1f0) >> 4
-	return AddrMode{Addr(Aa | Ab), Addr(d), NoIndex}
+func DecodeA6D5(am *AddrMode, op1, op2 Opcode) {
+	Aa := (op1 & 0x600) >> 5
+	Ab := (op1 & 0xf)
+	d := (op1 & 0x1f0) >> 4
+	am.A1 = Addr(Aa | Ab)
+	am.A2 = Addr(d)
+	am.Ireg = NoIndex
 }
 
 // DecodeB3 returns AddrMode{b, 0, NoIndex} extracted from
 // _________bbb____.
-func DecodeB3(inst Instruction) AddrMode {
-	b := (inst.Op1 & 0x70) >> 4
-	return AddrMode{Addr(b), 0, NoIndex}
+func DecodeB3(am *AddrMode, op1, op2 Opcode) {
+	b := (op1 & 0x70) >> 4
+	am.A1 = Addr(b)
+	am.A2 = 0
+	am.Ireg = NoIndex
 }
 
 // DecodeB3K7 returns AddrMode{b, k, NoIndex} (where -64<=k<=63)
 // extracted from ______kkkkkkkbbb.
-func DecodeB3K7(inst Instruction) AddrMode {
-	b := (inst.Op1 & 0x7)
-	k := Addr((inst.Op1 & 0x3f8) >> 3)
+func DecodeB3K7(am *AddrMode, op1, op2 Opcode) {
+	b := (op1 & 0x7)
+	k := Addr((op1 & 0x3f8) >> 3)
 	if (k & 0x40) != 0 {
 		k -= 0x80
 	}
-	return AddrMode{Addr(b), k, NoIndex}
+	am.A1 = Addr(b)
+	am.A2 = k
+	am.Ireg = NoIndex
 }
 
 // DecodeB3D5 returns AddrMode{b, d, NoIndex} extracted from
 // _______ddddd_bbb.
-func DecodeB3D5(inst Instruction) AddrMode {
-	b := (inst.Op1 & 0x7)
-	d := (inst.Op1 & 0x1f0) >> 4
-	return AddrMode{Addr(b), Addr(d), NoIndex}
+func DecodeB3D5(am *AddrMode, op1, op2 Opcode) {
+	b := (op1 & 0x7)
+	d := (op1 & 0x1f0) >> 4
+	am.A1 = Addr(b)
+	am.A2 = Addr(d)
+	am.Ireg = NoIndex
 }
 
 // DecodeD3R3 returns AddrMode{d, r, NoIndex} (where 16<=d,r<=23)
 // extracted from _________ddd_rrr.
-func DecodeD3R3(inst Instruction) AddrMode {
-	d := ((inst.Op1 & 0x70) >> 4) | 0x10
-	r := (inst.Op1 & 0x7) | 0x10
-	return AddrMode{Addr(d), Addr(r), NoIndex}
+func DecodeD3R3(am *AddrMode, op1, op2 Opcode) {
+	d := ((op1 & 0x70) >> 4) | 0x10
+	r := (op1 & 0x7) | 0x10
+	am.A1 = Addr(d)
+	am.A2 = Addr(r)
+	am.Ireg = NoIndex
 }
 
 // AddModeD4K7 returns AddrMode{d, k, NoIndex} (where 16<=d<=31 )
 // extracted from _____kkkddddkkkk.
-func DecodeD4K7(inst Instruction) AddrMode {
-	d := ((inst.Op1 & 0xf0) >> 4) | 0x10
-	ka := (inst.Op1 & 0x700) >> 4
-	kb := (inst.Op1 & 0xf)
-	return AddrMode{Addr(d), Addr(ka | kb), NoIndex}
+func DecodeD4K7(am *AddrMode, op1, op2 Opcode) {
+	d := ((op1 & 0xf0) >> 4) | 0x10
+	ka := (op1 & 0x700) >> 4
+	kb := (op1 & 0xf)
+	am.A1 = Addr(d)
+	am.A2 = Addr(ka | kb)
+	am.Ireg = NoIndex
 }
 
 // AddModeD4K8 returns AddrMode{d, K, NoIndex} (where 16<=d<=31 )
 // extracted from ____KKKKddddKKKK.
-func DecodeD4K8(inst Instruction) AddrMode {
-	d := ((inst.Op1 & 0xf0) >> 4) | 0x10
-	Ka := (inst.Op1 & 0xf00) >> 4
-	Kb := (inst.Op1 & 0xf)
-	return AddrMode{Addr(d), Addr(Ka | Kb), NoIndex}
+func DecodeD4K8(am *AddrMode, op1, op2 Opcode) {
+	d := ((op1 & 0xf0) >> 4) | 0x10
+	Ka := (op1 & 0xf00) >> 4
+	Kb := (op1 & 0xf)
+	am.A1 = Addr(d)
+	am.A2 = Addr(Ka | Kb)
+	am.Ireg = NoIndex
 }
 
 // DecodeD4R4 returns AddrMode{d, r, NoIndex} (where 16<=d,r<=31)
 // extracted from ________ddddrrrr.
-func DecodeD4R4(inst Instruction) AddrMode {
-	r := (inst.Op1 & 0xf) | 0x10
-	d := ((inst.Op1 & 0xf0) >> 4) | 0x10
-	return AddrMode{Addr(d), Addr(r), NoIndex}
+func DecodeD4R4(am *AddrMode, op1, op2 Opcode) {
+	r := (op1 & 0xf) | 0x10
+	d := ((op1 & 0xf0) >> 4) | 0x10
+	am.A1 = Addr(d)
+	am.A2 = Addr(r)
+	am.Ireg = NoIndex
 }
 
 // DecodeD5 returns AddrMode{d, 0, NoIndex} extracted from
 // _______ddddd____.
-func DecodeD5(inst Instruction) AddrMode {
-	d := (inst.Op1 & 0x1f0) >> 4
-	return AddrMode{Addr(d), 0, NoIndex}
+func DecodeD5(am *AddrMode, op1, op2 Opcode) {
+	d := (op1 & 0x1f0) >> 4
+	am.A1 = Addr(d)
+	am.A2 = 0
+	am.Ireg = NoIndex
 }
 
 // DecodeD5K16 returns AddrMode{d, k, NoIndex} extracted from
 // _______ddddd____ kkkkkkkkkkkkkkkk.
-func DecodeD5K16(inst Instruction) AddrMode {
-	d := (inst.Op1 & 0x1f0) >> 4
-	k := inst.Op2
-	return AddrMode{Addr(d), Addr(k), NoIndex}
+func DecodeD5K16(am *AddrMode, op1, op2 Opcode) {
+	d := (op1 & 0x1f0) >> 4
+	k := op2
+	am.A1 = Addr(d)
+	am.A2 = Addr(k)
+	am.Ireg = NoIndex
 }
 
 // DecodeD5R5 returns AddrMode{d, r, NoIndex} extracted from
 // ______rdddddrrrr.
-func DecodeD5R5(inst Instruction) AddrMode {
-	d := (inst.Op1 & 0x1f0) >> 4
-	ra := (inst.Op1 & 0x200) >> 5
-	rb := (inst.Op1 & 0xf)
-	return AddrMode{Addr(d), Addr(ra | rb), NoIndex}
+func DecodeD5R5(am *AddrMode, op1, op2 Opcode) {
+	d := (op1 & 0x1f0) >> 4
+	ra := (op1 & 0x200) >> 5
+	rb := (op1 & 0xf)
+	am.A1 = Addr(d)
+	am.A2 = Addr(ra | rb)
+	am.Ireg = NoIndex
 }
 
 // DecodeDDDDRRRR returns AddrMode{d, r, NoIndex} (where d,r are 0,2,..30)
 // extracted from ________ddddrrrr.
-func DecodeDDDDRRRR(inst Instruction) AddrMode {
-	d := (inst.Op1 & 0xf0) >> 4
-	r := (inst.Op1 & 0xf)
-	return AddrMode{Addr(d * 2), Addr(r * 2), NoIndex}
+func DecodeDDDDRRRR(am *AddrMode, op1, op2 Opcode) {
+	d := (op1 & 0xf0) >> 4
+	r := (op1 & 0xf)
+	am.A1 = Addr(d * 2)
+	am.A2 = Addr(r * 2)
+	am.Ireg = NoIndex
 }
 
 // DecodeDDK6 returns AddrMode{d, K, NoIndex} (where d is one of
 // 24, 26, 28, 30) extracted from ________KKddKKKK.
-func DecodeDDK6(inst Instruction) AddrMode {
-	Ka := (inst.Op1 & 0xc0) >> 2
-	Kb := (inst.Op1 & 0xf)
-	d := (inst.Op1 & 0x30) >> 4
-	return AddrMode{Addr(d*2 + 24), Addr(Ka | Kb), NoIndex}
+func DecodeDDK6(am *AddrMode, op1, op2 Opcode) {
+	Ka := (op1 & 0xc0) >> 2
+	Kb := (op1 & 0xf)
+	d := (op1 & 0x30) >> 4
+	am.A1 = Addr(d*2 + 24)
+	am.A2 = Addr(Ka | Kb)
+	am.Ireg = NoIndex
 }
 
 // DecodeElpm returns AddrMode{d, 0, ireg} extracted from
 // _______ddddd____, or AddrMode{0, 0, Z} for the no-argument form.
-func DecodeElpm(inst Instruction) AddrMode {
-	if inst.Op1 == 0x95d8 {
-		return AddrMode{0, 0, Z}
+func DecodeElpm(am *AddrMode, op1, op2 Opcode) {
+	if op1 == 0x95d8 {
+		am.A1 = 0
+		am.A2 = 0
+		am.Ireg = Z
+		return
 	}
 
-	d := (inst.Op1 & 0x1f0) >> 4
+	d := (op1 & 0x1f0) >> 4
 	ireg := Z
-	if (inst.Op1 & 0x1) != 0 {
+	if (op1 & 0x1) != 0 {
 		ireg = ZPostInc
 	}
-	return AddrMode{Addr(d), 0, ireg}
+	am.A1 = Addr(d)
+	am.A2 = 0
+	am.Ireg = ireg
 }
 
 // DecodeK4 returns AddrMode{K, 0, NoIndex} extracted from
 // ________KKKK____.
-func DecodeK4(inst Instruction) AddrMode {
-	K := (inst.Op1 & 0xf0) >> 4
-	return AddrMode{Addr(K), 0, NoIndex}
+func DecodeK4(am *AddrMode, op1, op2 Opcode) {
+	K := (op1 & 0xf0) >> 4
+	am.A1 = Addr(K)
+	am.A2 = 0
+	am.Ireg = NoIndex
 }
 
 // DecodeK12 returns AddrMode{K, 0, NoIndex} extracted from
 // ____kkkkkkkkkkkk.
-func DecodeK12(inst Instruction) AddrMode {
-	k := Addr(inst.Op1 & 0xfff)
+func DecodeK12(am *AddrMode, op1, op2 Opcode) {
+	k := Addr(op1 & 0xfff)
 	if (k & 0x800) != 0 {
 		k -= 0x1000
 	}
-	return AddrMode{k, 0, NoIndex}
+	am.A1 = k
+	am.A2 = 0
+	am.Ireg = NoIndex
 }
 
 // DecodeK22 returns AddrMode{k, 0, NoIndex} extracted from
 // _______kkkkk___k kkkkkkkkkkkkkkkk.
-func DecodeK22(inst Instruction) AddrMode {
-	ka := Addr((inst.Op1 & 0x1f0)) << 13
-	kb := Addr((inst.Op1 & 0x1)) << 16
-	kc := Addr(inst.Op2)
-	return AddrMode{ka | kb | kc, 0, NoIndex}
+func DecodeK22(am *AddrMode, op1, op2 Opcode) {
+	ka := Addr((op1 & 0x1f0)) << 13
+	kb := Addr((op1 & 0x1)) << 16
+	kc := Addr(op2)
+	am.A1 = ka | kb | kc
+	am.A2 = 0
+	am.Ireg = NoIndex
 }
 
 // DecodeLddStd returns AddrMode{d, q, ireg} extracted from
 // __q_qq_ddddd_qqq.
-func DecodeLddStd(inst Instruction) AddrMode {
-	d := (inst.Op1 & 0x1f0) >> 4
-	qa := (inst.Op1 & 0x2000) >> 8
-	qb := (inst.Op1 & 0xc00) >> 7
-	qc := (inst.Op1 & 0x7)
+func DecodeLddStd(am *AddrMode, op1, op2 Opcode) {
+	d := (op1 & 0x1f0) >> 4
+	qa := (op1 & 0x2000) >> 8
+	qb := (op1 & 0xc00) >> 7
+	qc := (op1 & 0x7)
 	ireg := Z
-	if (inst.Op1 & 0x8) != 0 {
+	if (op1 & 0x8) != 0 {
 		ireg = Y
 	}
-	return AddrMode{Addr(d), Addr(qa | qb | qc), ireg}
+	am.A1 = Addr(d)
+	am.A2 = Addr(qa | qb | qc)
+	am.Ireg = ireg
 }
 
 var ldstireg = []IndexReg{
@@ -260,35 +301,43 @@ var ldstireg = []IndexReg{
 
 // DecodeLdSt returns AddrMode{d, 0, ireg} extracted from
 // _______ddddd____.
-func DecodeLdSt(inst Instruction) AddrMode {
-	d := (inst.Op1 & 0x1f0) >> 4
-	ireg := ldstireg[inst.Op1.Nibble0()]
-	return AddrMode{Addr(d), 0, ireg}
+func DecodeLdSt(am *AddrMode, op1, op2 Opcode) {
+	d := (op1 & 0x1f0) >> 4
+	ireg := ldstireg[op1.Nibble0()]
+	am.A1 = Addr(d)
+	am.A2 = 0
+	am.Ireg = ireg
 }
 
 // DecodeLpm returns AddrMode{d, 0, ireg} extracted from
 // _______ddddd____.
-func DecodeLpm(inst Instruction) AddrMode {
-	if inst.Op1 == 0x95c8 {
-		return AddrMode{0, 0, Z}
+func DecodeLpm(am *AddrMode, op1, op2 Opcode) {
+	if op1 == 0x95c8 {
+		am.A1 = 0
+		am.A2 = 0
+		am.Ireg = Z
+		return
 	}
 
-	d := (inst.Op1 & 0x1f0) >> 4
+	d := (op1 & 0x1f0) >> 4
 	ireg := Z
-	if (inst.Op1 & 0x1) != 0 {
+	if (op1 & 0x1) != 0 {
 		ireg = ZPostInc
 	}
-	return AddrMode{Addr(d), 0, ireg}
+	am.A1 = Addr(d)
+	am.A2 = 0
+	am.Ireg = ireg
 }
 
 // DecodeNone returns AddrMode{} (for use by no-argument instructions).
-func DecodeNone(inst Instruction) AddrMode {
-	return AddrMode{}
+func DecodeNone(am *AddrMode, op1, op2 Opcode) {
 }
 
 // DecodeSpm returns AddrMode{0, 0, ZPostInc}.
-func DecodeSpm(inst Instruction) AddrMode {
-	return AddrMode{0, 0, ZPostInc}
+func DecodeSpm(am *AddrMode, op1, op2 Opcode) {
+	am.A1 = 0
+	am.A2 = 0
+	am.Ireg = ZPostInc
 }
 
 var OpModes = []Mode{

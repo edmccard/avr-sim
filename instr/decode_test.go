@@ -806,8 +806,8 @@ func testAD(t *testing.T, mn Mnemonic, op int, mask uint16, exp AddrMode) {
 	d := NewDecoder(setXmega)
 	mode := OpModes[mn]
 
-	inst := Instruction{Opcode(op), 0}
-	got := d.DecodeAddr(mn, inst)
+	got := AddrMode{}
+	d.DecodeAddr(&got, mn, Opcode(op), 0)
 	if got != exp {
 		t.Errorf("%s:%s (0 mask) %v not %v", mn, mode, got, exp)
 	}
@@ -815,8 +815,7 @@ func testAD(t *testing.T, mn Mnemonic, op int, mask uint16, exp AddrMode) {
 		return
 	}
 
-	inst = Instruction{Opcode(op) | Opcode(mask), 0}
-	got = d.DecodeAddr(mn, inst)
+	d.DecodeAddr(&got, mn, Opcode(op)|Opcode(mask), 0)
 	if got != exp {
 		t.Errorf("%s:%s (1 mask) %v not %v", mn, mode, got, exp)
 	}

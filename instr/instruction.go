@@ -142,7 +142,3 @@ func (o Opcode) Nibble1() uint {
 func (o Opcode) Nibble0() uint {
 	return uint(o & 0xf)
 }
-
-type Instruction struct {
-	Op1, Op2 Opcode
-}

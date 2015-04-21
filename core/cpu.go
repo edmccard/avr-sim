@@ -17,6 +17,7 @@ type Cpu struct {
 	rmask [5]int
 	next  inst
 	skip  bool
+	am    *instr.AddrMode
 }
 
 type Flag int
@@ -59,9 +60,9 @@ func (c *Cpu) Step(mem Memory, d *instr.Decoder) {
 		c.pcInc(1)
 	}
 	mnem := c.next.mnem
-	am := d.DecodeAddr(mnem, instr.Instruction{c.next.op, op2})
+	d.DecodeAddr(c.am, mnem, c.next.op, op2)
 	c.prefetch(mem, d)
-	opFuncs[mnem](c, &am, mem)
+	opFuncs[mnem](c, c.am, mem)
 	if c.skip {
 		c.pcInc(c.next.ln)
 		c.prefetch(mem, d)

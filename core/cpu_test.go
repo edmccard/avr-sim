@@ -13,7 +13,6 @@ import (
 //       so the branch functions work with either tCpu or tCpuDm
 type tCpu struct {
 	Cpu
-	am instr.AddrMode
 }
 
 func (tc tCpu) Equals(other testcase.Testable) bool {

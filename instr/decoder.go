@@ -678,7 +678,7 @@ func (d Decoder) decodeSbrs(op Opcode) (Mnemonic, int) {
 	}
 }
 
-// DecodeAddr returns the address mode for an instruction.
-func (d *Decoder) DecodeAddr(mn Mnemonic, inst Instruction) AddrMode {
-	return decoders[OpModes[mn]](inst)
+// DecodeAddr fills in an address mode for an instruction.
+func (d *Decoder) DecodeAddr(am *AddrMode, mn Mnemonic, op1, op2 Opcode) {
+	decoders[OpModes[mn]](am, op1, op2)
 }
