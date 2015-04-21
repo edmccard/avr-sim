@@ -290,7 +290,6 @@ var orData = []aluData{
 // Branches with all flags initially set/all flags initially clear.
 func brAllFlags(tree testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
-	initTc.am = &instr.AddrMode{}
 	initTc.SregFromByte(0xff)
 	tree.Run("SRff", initTc, exp)
 	initTc.SregFromByte(0x00)
@@ -330,9 +329,9 @@ func brD5R5(tree testcase.Tree, init, exp testcase.Testable) {
 	d := instr.Addr(rand.Intn(32))
 	r := (d + 1) & 0x1f
 	initTc := init.(tCpu)
-	initTc.am = &instr.AddrMode{d, r, instr.NoIndex}
+	initTc.am = instr.AddrMode{d, r, instr.NoIndex}
 	tree.Run(fmt.Sprintf("r%02d,r%02d", d, r), initTc, exp)
-	initTc.am = &instr.AddrMode{d, d, instr.NoIndex}
+	initTc.am = instr.AddrMode{d, d, instr.NoIndex}
 	tree.Run(fmt.Sprintf("r%02d,r%02d", d, d), initTc, exp)
 }
 
@@ -343,7 +342,7 @@ func brMul5(tree testcase.Tree, init, exp testcase.Testable) {
 		d, r instr.Addr
 	}{{0, 1}, {0, 0}, {1, 1}, {1, 2}, {2, 3}}
 	for _, reg := range regs {
-		initTc.am = &instr.AddrMode{reg.d, reg.r, instr.NoIndex}
+		initTc.am = instr.AddrMode{reg.d, reg.r, instr.NoIndex}
 		tree.Run(fmt.Sprintf("r%02d,r%02d", reg.r, reg.d), initTc, exp)
 	}
 }
@@ -352,18 +351,18 @@ func brMul5(tree testcase.Tree, init, exp testcase.Testable) {
 // for Muls/Mulsu/Fmul/Fmuls/Fmulsu.
 func brMul34(tree testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
-	initTc.am = &instr.AddrMode{16, 17, instr.NoIndex}
+	initTc.am = instr.AddrMode{16, 17, instr.NoIndex}
 	tree.Run("r16,r17", initTc, exp)
-	initTc.am = &instr.AddrMode{16, 16, instr.NoIndex}
+	initTc.am = instr.AddrMode{16, 16, instr.NoIndex}
 	tree.Run("r16,r16", initTc, exp)
 }
 
 // Branches with (1:0, 3:2) and (1:0, 1:0) as register pairs for Movw.
 func brRegPair(tree testcase.Tree, init, exp testcase.Testable) {
 	initTc := init.(tCpu)
-	initTc.am = &instr.AddrMode{0, 2, instr.NoIndex}
+	initTc.am = instr.AddrMode{0, 2, instr.NoIndex}
 	tree.Run("r1:r0,r3:r2", initTc, exp)
-	initTc.am = &instr.AddrMode{0, 0, instr.NoIndex}
+	initTc.am = instr.AddrMode{0, 0, instr.NoIndex}
 	tree.Run("r1:r0,r1:r0", initTc, exp)
 }
 
@@ -382,7 +381,7 @@ func testD5R5(ac aluCase, mnem instr.Mnemonic) {
 	expCpu.reg[r] = ac.v2
 	expCpu.reg[d] = ac.res
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
-	opFuncs[mnem](&initCpu.Cpu, initCpu.am, nil)
+	opFuncs[mnem](&initCpu.Cpu, &initCpu.am, nil)
 	ac.t.Run(fmt.Sprintf("%s [%d]", mnem, ac.n), initCpu, expCpu)
 }
 
@@ -393,7 +392,7 @@ func testD5(ac aluCase, mnem instr.Mnemonic) {
 	expCpu := ac.init
 	expCpu.reg[d] = ac.res
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
-	opFuncs[mnem](&initCpu.Cpu, initCpu.am, nil)
+	opFuncs[mnem](&initCpu.Cpu, &initCpu.am, nil)
 	ac.t.Run(fmt.Sprintf("%s [%d]", mnem, ac.n), initCpu, expCpu)
 }
 
@@ -403,8 +402,8 @@ func testD4K8(ac aluCase, mnem instr.Mnemonic) {
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
 	initCpu := ac.init
 	initCpu.reg[16] = ac.v1
-	initCpu.am = &instr.AddrMode{16, instr.Addr(ac.v2), instr.NoIndex}
-	opFuncs[mnem](&initCpu.Cpu, initCpu.am, nil)
+	initCpu.am = instr.AddrMode{16, instr.Addr(ac.v2), instr.NoIndex}
+	opFuncs[mnem](&initCpu.Cpu, &initCpu.am, nil)
 	ac.t.Run(fmt.Sprintf("%s [%d]", mnem, ac.n), initCpu, expCpu)
 }
 
@@ -416,8 +415,8 @@ func testDDK6(ac aluCase, mnem instr.Mnemonic) {
 	initCpu := ac.init
 	initCpu.reg[24] = ac.v1 & 0xff
 	initCpu.reg[25] = ac.v1 >> 8
-	initCpu.am = &instr.AddrMode{24, instr.Addr(ac.v2), instr.NoIndex}
-	opFuncs[mnem](&initCpu.Cpu, initCpu.am, nil)
+	initCpu.am = instr.AddrMode{24, instr.Addr(ac.v2), instr.NoIndex}
+	opFuncs[mnem](&initCpu.Cpu, &initCpu.am, nil)
 	ac.t.Run(fmt.Sprintf("%s [%d]", mnem, ac.n), initCpu, expCpu)
 }
 
@@ -436,7 +435,7 @@ func testMul(ac aluCase, mnem instr.Mnemonic) {
 	expCpu.reg[0] = ac.res & 0xff
 	expCpu.reg[1] = ac.res >> 8
 	expCpu.setStatus(byte(ac.status), byte(ac.mask))
-	opFuncs[mnem](&initCpu.Cpu, initCpu.am, nil)
+	opFuncs[mnem](&initCpu.Cpu, &initCpu.am, nil)
 	ac.t.Run(fmt.Sprintf("%s [%d]", mnem, ac.n), initCpu, expCpu)
 }
 
@@ -456,7 +455,7 @@ func testMovw(ac aluCase, mnem instr.Mnemonic) {
 	expCpu.reg[r+1] = ac.v2 >> 8
 	expCpu.reg[d] = ac.res & 0xff
 	expCpu.reg[d+1] = ac.res >> 8
-	movw(&initCpu.Cpu, initCpu.am, nil)
+	movw(&initCpu.Cpu, &initCpu.am, nil)
 	ac.t.Run(fmt.Sprintf("Movw [%d]", ac.n), initCpu, expCpu)
 }
 
@@ -498,7 +497,7 @@ func TestALU(t *testing.T) {
 func brBit(tree testcase.Tree, init, exp testcase.Testable) {
 	for bit := 0; bit < 7; bit++ {
 		initTc := init.(tCpu)
-		initTc.am = &instr.AddrMode{instr.Addr(bit), 0, instr.NoIndex}
+		initTc.am = instr.AddrMode{instr.Addr(bit), 0, instr.NoIndex}
 		tree.Run(fmt.Sprintf("b%d", bit), initTc, exp)
 	}
 }
@@ -539,10 +538,10 @@ func TestBranch(t *testing.T) {
 		} else {
 			expCpuC.pc = jump
 		}
-		brbs(&initCpu.Cpu, initCpu.am, nil)
+		brbs(&initCpu.Cpu, &initCpu.am, nil)
 		tree.Run("Brbs", initCpu, expCpuS)
 		initCpu = init.(tCpu)
-		brbc(&initCpu.Cpu, initCpu.am, nil)
+		brbc(&initCpu.Cpu, &initCpu.am, nil)
 		tree.Run("Brbc", initCpu, expCpuC)
 	}
 	branches := []testcase.Branch{brAllFlags, brBit, brBitFlag, brOffset, run}
@@ -556,12 +555,12 @@ func TestFlag(t *testing.T) {
 		bit := Flag(initCpu.am.A1)
 		expCpuS := initCpu
 		expCpuS.SetFlag(bit, true)
-		bset(&initCpu.Cpu, initCpu.am, nil)
+		bset(&initCpu.Cpu, &initCpu.am, nil)
 		tree.Run("Bset", initCpu, expCpuS)
 		initCpu = init.(tCpu)
 		expCpuC := initCpu
 		expCpuC.SetFlag(bit, false)
-		bclr(&initCpu.Cpu, initCpu.am, nil)
+		bclr(&initCpu.Cpu, &initCpu.am, nil)
 		tree.Run("Blcr", initCpu, expCpuC)
 	}
 	testcase.NewTree(t, "FLAG", brAllFlags, brBit, run).Start(tCpu{})
@@ -583,7 +582,7 @@ func TestBst(t *testing.T) {
 		mask := 1 << uint(initCpu.am.A1)
 		expCpu := initCpu
 		expCpu.SetFlag(FlagT, (initCpu.reg[0]&mask) != 0)
-		bst(&initCpu.Cpu, initCpu.am, nil)
+		bst(&initCpu.Cpu, &initCpu.am, nil)
 		tree.Run("Bst", initCpu, expCpu)
 	}
 	testcase.NewTree(t, "XFR", brAllFlags, brBit, brSetClr, run).Start(tCpu{})
@@ -602,7 +601,7 @@ func TestBld(t *testing.T) {
 			initCpu.reg[0] = 0xff
 			expCpu.reg[0] = ^(1 << bit) & 0xff
 		}
-		bld(&initCpu.Cpu, initCpu.am, nil)
+		bld(&initCpu.Cpu, &initCpu.am, nil)
 		tree.Run("Bld", initCpu, expCpu)
 	}
 	testcase.NewTree(t, "XFR", brAllFlags, brBit, brXfer, run).Start(tCpu{})
@@ -632,7 +631,7 @@ func TestJmpRjmp(t *testing.T) {
 			initCpu.rmask[Eind] = c.rmask << 16
 			expCpu := initCpu
 			expCpu.pc = c.pcPost
-			opFuncs[c.mnem](&initCpu.Cpu, initCpu.am, nil)
+			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.am, nil)
 			tree.Run(fmt.Sprintf("%s [%d]", c.mnem, n), initCpu, expCpu)
 		}
 	}
@@ -658,7 +657,7 @@ func TestIjmpEijmp(t *testing.T) {
 			initCpu.ramp[Eind] = c.eind << 16
 			expCpu := initCpu
 			expCpu.pc = c.post
-			opFuncs[c.mnem](&initCpu.Cpu, initCpu.am, nil)
+			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.am, nil)
 			tree.Run(fmt.Sprintf("%s [%d]", c.mnem, n), initCpu, expCpu)
 		}
 	}
