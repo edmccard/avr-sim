@@ -340,7 +340,7 @@ func DecodeSpm(am *AddrMode, op1, op2 Opcode) {
 	am.Ireg = ZPostInc
 }
 
-var OpModes = []Mode{
+var OpModes = [...]Mode{
 	ModeNone,     // Reserved
 	ModeD5R5,     // Adc
 	ModeD5R5,     // AdcReduced

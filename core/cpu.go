@@ -2,12 +2,6 @@ package cpu
 
 import "github.com/edmccard/avr-sim/instr"
 
-type inst struct {
-	op   instr.Opcode
-	mnem instr.Mnemonic
-	ln   int
-}
-
 type Cpu struct {
 	reg   [32]int
 	flags [8]bool
@@ -15,7 +9,6 @@ type Cpu struct {
 	pc    int
 	ramp  [5]int // D,X,Y,Z,EIND
 	rmask [5]int
-	next  inst
 	skip  bool
 	am    instr.AddrMode
 }
@@ -43,36 +36,34 @@ const (
 	Eind
 )
 
-func (c *Cpu) Reset(sp int, pc int, mem Memory, d *instr.Decoder) {
+func (c *Cpu) Reset(sp int, pc int) {
 	c.pc = pc
 	c.sp = sp
 	for i := range c.flags {
 		c.flags[i] = false
 	}
-	c.prefetch(mem, d)
 }
 
 func (c *Cpu) Step(mem Memory, d *instr.Decoder) {
-	c.pcInc(1)
-	var op2 instr.Opcode
-	if c.next.ln == 2 {
-		op2 = instr.Opcode(mem.ReadProgram(instr.Addr(c.pc)))
-		c.pcInc(1)
-	}
-	mnem := c.next.mnem
-	d.DecodeAddr(&c.am, mnem, c.next.op, op2)
-	c.prefetch(mem, d)
+	op, op2, mnem := c.fetch(mem, d)
+	d.DecodeAddr(&c.am, mnem, op, op2)
 	opFuncs[mnem](c, &c.am, mem)
 	if c.skip {
-		c.pcInc(c.next.ln)
-		c.prefetch(mem, d)
 		c.skip = false
+		op, op2, mnem = c.fetch(mem, d)
 	}
 }
 
-func (c *Cpu) prefetch(mem Memory, d *instr.Decoder) {
-	c.next.op = instr.Opcode(mem.ReadProgram(instr.Addr(c.pc)))
-	c.next.mnem, c.next.ln = d.DecodeMnem(c.next.op)
+func (c *Cpu) fetch(mem Memory, d *instr.Decoder) (instr.Opcode, instr.Opcode, instr.Mnemonic) {
+	var op2 instr.Opcode
+	op := instr.Opcode(mem.ReadProgram(instr.Addr(c.pc)))
+	c.pcInc(1)
+	mnem, ln := d.DecodeMnem(op)
+	if ln == 2 {
+		op2 = instr.Opcode(mem.ReadProgram(instr.Addr(c.pc)))
+		c.pcInc(1)
+	}
+	return op, op2, mnem
 }
 
 func (c *Cpu) GetReg(r instr.Addr) byte {
@@ -688,7 +679,7 @@ func cpse(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 
 type OpFunc func(*Cpu, *instr.AddrMode, Memory)
 
-var opFuncs = []OpFunc{
+var opFuncs = [...]OpFunc{
 	nop,    // Reserved
 	adc,    // Adc
 	adc,    // AdcReduced

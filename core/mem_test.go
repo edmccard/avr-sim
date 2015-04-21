@@ -273,16 +273,15 @@ func TestSBR(t *testing.T) {
 		mnem                      string
 		reg0                      byte
 		pcPre, op, opNext, pcPost int
-		final                     int
 	}{
-		{"Sbrs", 0x00, 0x1000, 0xfe00, 0x0000, 0x1001, 0},
-		{"Sbrs", 0x00, 0x1000, 0xfe00, 0x940e, 0x1001, 0},
-		{"Sbrs", 0x01, 0x1000, 0xfe00, 0x0000, 0x1002, 0x1002},
-		{"Sbrs", 0x01, 0x1000, 0xfe00, 0x940e, 0x1003, 0x1003},
-		{"Sbrc", 0x01, 0x1000, 0xfc00, 0x0000, 0x1001, 0},
-		{"Sbrc", 0x01, 0x1000, 0xfc00, 0x940e, 0x1001, 0},
-		{"Sbrc", 0x00, 0x1000, 0xfc00, 0x0000, 0x1002, 0x1002},
-		{"Sbrc", 0x00, 0x1000, 0xfc00, 0x940e, 0x1003, 0x1003},
+		{"Sbrs", 0x00, 0x1000, 0xfe00, 0x0000, 0x1001},
+		{"Sbrs", 0x00, 0x1000, 0xfe00, 0x940e, 0x1001},
+		{"Sbrs", 0x01, 0x1000, 0xfe00, 0x0000, 0x1002},
+		{"Sbrs", 0x01, 0x1000, 0xfe00, 0x940e, 0x1003},
+		{"Sbrc", 0x01, 0x1000, 0xfc00, 0x0000, 0x1001},
+		{"Sbrc", 0x01, 0x1000, 0xfc00, 0x940e, 0x1001},
+		{"Sbrc", 0x00, 0x1000, 0xfc00, 0x0000, 0x1002},
+		{"Sbrc", 0x00, 0x1000, 0xfc00, 0x940e, 0x1003},
 	}
 	run := func(tree testcase.Tree, init, exp testcase.Testable) {
 		for n, c := range cases {
@@ -294,20 +293,44 @@ func TestSBR(t *testing.T) {
 			initCpu.dmem.SetReadData([]int{c.op, c.opNext, 0})
 			expCpu.dmem.SetReadData([]int{c.op, c.opNext, 0})
 			expCpu.dmem.ReadProgram(instr.Addr(c.pcPre))
-			expCpu.dmem.ReadProgram(instr.Addr(c.pcPre + 1))
-			if c.mnem == "Sbrs" && c.reg0 != 0 {
-				expCpu.dmem.ReadProgram(instr.Addr(c.final))
-			}
-			if c.mnem == "Sbrc" && c.reg0 == 0 {
-				expCpu.dmem.ReadProgram(instr.Addr(c.final))
+			skip := (c.mnem == "Sbrs" && c.reg0 != 0) ||
+				(c.mnem == "Sbrc" && c.reg0 == 0)
+			if skip {
+				expCpu.dmem.ReadProgram(instr.Addr(c.pcPre + 1))
+				if c.opNext == 0x940e {
+					expCpu.dmem.ReadProgram(instr.Addr(c.pcPre + 2))
+				}
 			}
 			decoder := instr.NewDecoder(setXmega)
-			initCpu.prefetch(&initCpu.dmem, &decoder)
 			initCpu.Step(&initCpu.dmem, &decoder)
 			tree.Run(fmt.Sprintf("%s [%d]", c.mnem, n), initCpu, expCpu)
 		}
 	}
 	testcase.NewTree(t, "SKP", run).Start(tCpuDm{})
+}
+
+func TestStepBranch(t *testing.T) {
+	var cases = []struct{
+		pcPre, op, pcPost int
+	}{
+		{0x1002, 0xf7e8, 0x1000},
+		{0x1000, 0xf408, 0x1002},
+	}
+	decoder := instr.NewDecoder(setXmega)
+	run := func(tree testcase.Tree, init, exp testcase.Testable) {
+		for n, c := range cases {
+			initCpu := init.(tCpuDm)
+			expCpu := initCpu
+			initCpu.dmem.SetReadData([]int{c.op, 0})
+			expCpu.dmem.SetReadData([]int{c.op, 0})
+			expCpu.dmem.ReadProgram(instr.Addr(c.pcPre))
+			expCpu.pc = c.pcPost
+			initCpu.Reset(0, c.pcPre)
+			initCpu.Step(&initCpu.dmem, &decoder)
+			tree.Run(fmt.Sprintf("Brcc [%d]", n), initCpu, expCpu)
+		}
+	}
+	testcase.NewTree(t, "BRA", run).Start(tCpuDm{})
 }
 
 var setXmega = instr.NewSetXmega()
@@ -324,12 +347,12 @@ func (m *ldiMem) ReadProgram(addr instr.Addr) uint16 {
 	return 0xe000
 }
 
-var xxxam = instr.AddrMode{}
-var xxxc = Cpu{am: xxxam}
-var xxxd = instr.NewDecoder(setXmega)
-var xxxm = ldiMem{}
+func BenchmarkStepLdi(b *testing.B) {
+	var xxxam = instr.AddrMode{}
+	var xxxc = Cpu{am: xxxam}
+	var xxxd = instr.NewDecoder(setXmega)
+	var xxxm = ldiMem{}
 
-func BenchmarkStep(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		xxxc.Step(&xxxm, &xxxd)
 	}
