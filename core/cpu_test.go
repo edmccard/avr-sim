@@ -18,7 +18,8 @@ type tCpu struct {
 
 func (tc tCpu) Equals(other testcase.Testable) bool {
 	o := other.(tCpu)
-	return tc.Cpu == o.Cpu
+	return tc.reg == o.reg && tc.flags == o.flags && tc.sp == o.sp &&
+		tc.pc == o.pc && tc.ramp == o.ramp && tc.rmask == o.rmask
 }
 
 func (tc tCpu) Diff(other testcase.Testable) interface{} {
@@ -94,85 +95,72 @@ func (tc *tCpu) setStatus(expStatus, mask byte) {
 	tc.SregFromByte(status)
 }
 
+// tDataMem implements the Memory interface for testing. Setup of
+// expected state is done by calling the Read/Write methods in the
+// same order (with the same addresses and written values) as they
+// should be called by an instruction; for read tests, use SetReadData
+// on both the initial and expected states.
 type tDataMem struct {
-	readCount  int
-	readAddrs  [3]instr.Addr
-	readVals   [3]byte
-	writeCount int
-	writeAddrs [3]instr.Addr
-	writeVals  [3]byte
+	readVals      []int
+	readAttempts  string
+	writeAttempts string
 }
 
 func (tdm *tDataMem) ReadData(addr instr.Addr) byte {
-	var val byte
-	if tdm.readCount < 3 {
-		tdm.readAddrs[tdm.readCount] = addr
-		val = tdm.readVals[tdm.readCount]
+	var val byte = 0x00
+	if len(tdm.readVals) != 0 {
+		val = byte(tdm.readVals[0])
+		tdm.readVals = tdm.readVals[1:]
 	}
-	tdm.readCount += 1
+	tdm.readAttempts += fmt.Sprintf("%02x<-%04x ", val, addr)
 	return val
 }
 
-func (tdm *tDataMem) SetReadData(vals []byte) {
-	for i, v := range vals {
-		tdm.readVals[i] = v
+// The data stored by SetReadData is used for both data and program
+// reads.
+func (tdm *tDataMem) SetReadData(vals []int) {
+	for _, v := range vals {
+		tdm.readVals = append(tdm.readVals, v)
 	}
 }
 
 func (tdm *tDataMem) WriteData(addr instr.Addr, val byte) {
-	if tdm.writeCount < 3 {
-		tdm.writeAddrs[tdm.writeCount] = addr
-		tdm.writeVals[tdm.writeCount] = val
-	}
-	tdm.writeCount += 1
+	tdm.writeAttempts += fmt.Sprintf("%04x->%02x ", addr, val)
 }
 
 func (tdm *tDataMem) ReadProgram(addr instr.Addr) uint16 {
-	return 0
+	var val uint16 = 0x0000
+	if len(tdm.readVals) != 0 {
+		val = uint16(tdm.readVals[0])
+		tdm.readVals = tdm.readVals[1:]
+	}
+	tdm.readAttempts += fmt.Sprintf("%04x<-%04x ", val, addr)
+	return val
 }
 
 func (this *tDataMem) equals(that *tDataMem) bool {
-	return this.readCount == that.readCount &&
-		this.readAddrs == that.readAddrs &&
-		this.writeCount == that.writeCount &&
-		this.writeAddrs == that.writeAddrs &&
-		this.writeVals == that.writeVals
+	return this.readAttempts == that.readAttempts &&
+		this.writeAttempts == that.writeAttempts
 }
 
 func (this *tDataMem) diff(that *tDataMem) string {
-	// Assumes this != that; assumes 1 read xor 1 write;
-	// assumes this is expected and that is actual
-	switch {
-	case this.readCount < that.readCount:
-		return "MEM: too many reads"
-	case this.readCount > that.readCount:
-		return "MEM: too few reads"
-	case this.writeCount < that.writeCount:
-		return "MEM: too many writes"
-	case this.writeCount > that.writeCount:
-		return "MEM: too few writes"
+	thisLine, thatLine := "", ""
+	if this.readAttempts != that.readAttempts {
+		thisLine += this.readAttempts
+		thatLine += that.readAttempts
 	}
-	if this.readCount > 0 {
-		for i := range this.readAddrs {
-			if this.readAddrs[i] != that.readAddrs[i] {
-				return fmt.Sprintf("MEM: expected read #%d %04x got %04x",
-					i, this.readAddrs[i], that.readAddrs[i])
-			}
+	if this.writeAttempts != that.writeAttempts {
+		if thisLine != "" {
+			thisLine += " "
+			thatLine += " "
 		}
+		thisLine += this.writeAttempts
+		thatLine += that.writeAttempts
 	}
-	if this.writeCount > 0 {
-		for i := range this.writeAddrs {
-			if this.writeAddrs[i] != that.writeAddrs[i] {
-				return fmt.Sprintf("MEM: expected write #%d at %04x got %04x",
-					this.writeAddrs[i], that.writeAddrs[i])
-			}
-			if this.writeVals[0] != that.writeVals[0] {
-				return fmt.Sprintf("MEM: expected write #%d of %02x got %02x",
-					i, this.writeVals[i], that.writeVals[i])
-			}
-		}
+	if thisLine == "" && thatLine == "" {
+		return ""
 	}
-	return ""
+	return "MEM: " + thisLine + "\n" + "MEM: " + thatLine + "\n"
 }
 
 type tCpuDm struct {
@@ -182,13 +170,13 @@ type tCpuDm struct {
 
 func (tc tCpuDm) Equals(other testcase.Testable) bool {
 	o := other.(tCpuDm)
-	return tc.tCpu == o.tCpu && tc.dmem.equals(&o.dmem)
+	return tc.tCpu.Equals(o.tCpu) && tc.dmem.equals(&o.dmem)
 }
 
 func (tc tCpuDm) Diff(other testcase.Testable) interface{} {
 	o := other.(tCpuDm)
 	cDiff := tc.tCpu.Diff(o.tCpu)
-	mDiff := fmt.Sprintf("%s", tc.dmem.diff(&o.dmem))
+	mDiff := tc.dmem.diff(&o.dmem)
 	if mDiff != "" {
 		if cDiff != nil {
 			return fmt.Sprintf("%s", cDiff) + "\n" + mDiff

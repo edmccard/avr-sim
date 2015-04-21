@@ -2,6 +2,12 @@ package cpu
 
 import "github.com/edmccard/avr-sim/instr"
 
+type inst struct {
+	op   instr.Opcode
+	mnem instr.Mnemonic
+	ln   int
+}
+
 type Cpu struct {
 	reg   [32]int
 	flags [8]bool
@@ -9,6 +15,8 @@ type Cpu struct {
 	pc    int
 	ramp  [5]int // D,X,Y,Z,EIND
 	rmask [5]int
+	next  inst
+	skip  bool
 }
 
 type Flag int
@@ -34,13 +42,36 @@ const (
 	Eind
 )
 
-func (c *Cpu) Reset(mem Memory, sp uint16, d *instr.Decoder) {
-	c.pc = 0
-	c.sp = int(sp)
+func (c *Cpu) Reset(sp int, pc int, mem Memory, d *instr.Decoder) {
+	c.pc = pc
+	c.sp = sp
 	for i := range c.flags {
 		c.flags[i] = false
 	}
 	c.prefetch(mem, d)
+}
+
+func (c *Cpu) Step(mem Memory, d *instr.Decoder) {
+	c.pcInc(1)
+	var op2 instr.Opcode
+	if c.next.ln == 2 {
+		op2 = instr.Opcode(mem.ReadProgram(instr.Addr(c.pc)))
+		c.pcInc(1)
+	}
+	mnem := c.next.mnem
+	am := d.DecodeAddr(mnem, instr.Instruction{c.next.op, op2})
+	c.prefetch(mem, d)
+	opFuncs[mnem](c, &am, mem)
+	if c.skip {
+		c.pcInc(c.next.ln)
+		c.prefetch(mem, d)
+		c.skip = false
+	}
+}
+
+func (c *Cpu) prefetch(mem Memory, d *instr.Decoder) {
+	c.next.op = instr.Opcode(mem.ReadProgram(instr.Addr(c.pc)))
+	c.next.mnem, c.next.ln = d.DecodeMnem(c.next.op)
 }
 
 func (c *Cpu) GetReg(r instr.Addr) byte {
@@ -110,11 +141,6 @@ func (c *Cpu) setRmask(reg Ramp, mask byte) {
 	c.rmask[reg] = (int(mask) << 16)
 }
 
-func (c *Cpu) prefetch(mem Memory, d *instr.Decoder) {
-	op := mem.ReadProgram(instr.Addr(c.pc))
-	op = op
-}
-
 func (c *Cpu) indirect(ireg instr.IndexReg, q instr.Addr) instr.Addr {
 	base := ireg.Base()
 	mode := ireg.Mode()
@@ -144,7 +170,6 @@ func (c *Cpu) spInc(offset int) {
 func (c *Cpu) pcInc(offset int) {
 	c.pc = (c.pc + offset) & (c.rmask[Eind] | 0xffff)
 }
-
 
 func nop(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 }
@@ -642,124 +667,142 @@ func xch(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	mem.WriteData(addr, tmp)
 }
 
+func sbrc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	if (cpu.reg[am.A2] & (1 << uint(am.A1))) == 0 {
+		cpu.skip = true
+	}
+}
+
+func sbrs(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	if (cpu.reg[am.A2] & (1 << uint(am.A1))) != 0 {
+		cpu.skip = true
+	}
+}
+
+func cpse(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	if cpu.reg[am.A1] == cpu.reg[am.A2] {
+		cpu.skip = true
+	}
+}
+
 type OpFunc func(*Cpu, *instr.AddrMode, Memory)
 
 var opFuncs = []OpFunc{
-	nop,  // Reserved
-	adc,  // Adc
-	adc,  // AdcReduced
-	add,  // Add
-	add,  // AddReduced
-	adiw, // Adiw
-	and,  // And
-	and,  // AndReduced
-	andi,  // Andi
-	asr,  // Asr
-	asr,  // AsrReduced
-	bclr,  // Bclr
-	bld,  // Bld
-	bld,  // BldReduced
-	brbc,  // Brbc
-	brbs,  // Brbs
-	nop, // Break ****
-	bset,  // Bset
-	bst,  // Bst
-	bst,  // BstReduced
-	call, // Call
-	nop,  // Cbi ****
-	com,  // Com
-	com,  // ComReduced
-	cp,  // Cp
-	cp,  // CpReduced
-	cpc,  // Cpc
-	cpc,  // CpcReduced
-	cpi,  // Cpi
-	nop,  // Cpse ****
-	nop,  // CpseReduced ****
-	dec,  // Dec
-	dec,  // DecReduced
-	nop, // Des ****
+	nop,    // Reserved
+	adc,    // Adc
+	adc,    // AdcReduced
+	add,    // Add
+	add,    // AddReduced
+	adiw,   // Adiw
+	and,    // And
+	and,    // AndReduced
+	andi,   // Andi
+	asr,    // Asr
+	asr,    // AsrReduced
+	bclr,   // Bclr
+	bld,    // Bld
+	bld,    // BldReduced
+	brbc,   // Brbc
+	brbs,   // Brbs
+	nop,    // Break ****
+	bset,   // Bset
+	bst,    // Bst
+	bst,    // BstReduced
+	call,   // Call
+	nop,    // Cbi ****
+	com,    // Com
+	com,    // ComReduced
+	cp,     // Cp
+	cp,     // CpReduced
+	cpc,    // Cpc
+	cpc,    // CpcReduced
+	cpi,    // Cpi
+	nop,    // Cpse ****
+	nop,    // CpseReduced ****
+	dec,    // Dec
+	dec,    // DecReduced
+	nop,    // Des ****
 	eicall, // Eicall
-	eijmp, // Eijmp
-	nop, // Elpm ****
-	nop, // ElpmEnhanced ****
-	eor,  // Eor
-	eor,  // EorReduced
-	fmul, // Fmul
-	fmuls, // Fmuls
+	eijmp,  // Eijmp
+	nop,    // Elpm ****
+	nop,    // ElpmEnhanced ****
+	eor,    // Eor
+	eor,    // EorReduced
+	fmul,   // Fmul
+	fmuls,  // Fmuls
 	fmulsu, // Fmulsu
-	icall, // Icall
-	ijmp, // Ijmp
-	nop,  // In ****
-	nop,  // InReduced ****
-	inc,  // Inc
-	inc,  // IncReduced
-	jmp, // Jmp
-	lac, // Lac
-	las, // Las
-	lat, // Lat
-	ld, // LdClassic
-	ld, // LdClassicReduced
-	ld,  // LdMinimal
-	ld,  // LdMinimalReduced
-	ldd, // Ldd
-	ldi,  // Ldi
-	lds, // Lds
-	nop, // Lds16 ****
-	nop,  // Lpm ****
-	nop, // LpmEnhanced ****
-	lsr,  // Lsr
-	lsr,  // LsrReduced
-	mov,  // Mov
-	mov,  // MovReduced
-	movw, // Movw
-	mul, // Mul
-	muls, // Muls
-	mulsu, // Mulsu
-	neg,  // Neg
-	neg,  // NegReduced
-	nop,  // Nop
-	or,  // Or
-	or,  // OrReduced
-	ori,  // Ori
-	nop,  // Out ****
-	nop,  // OutReduced ****
-	pop, // Pop
-	pop, // PopReduced
-	push, // Push
-	push, // PushReduced
+	icall,  // Icall
+	ijmp,   // Ijmp
+	nop,    // In ****
+	nop,    // InReduced ****
+	inc,    // Inc
+	inc,    // IncReduced
+	jmp,    // Jmp
+	lac,    // Lac
+	las,    // Las
+	lat,    // Lat
+	ld,     // LdClassic
+	ld,     // LdClassicReduced
+	ld,     // LdMinimal
+	ld,     // LdMinimalReduced
+	ldd,    // Ldd
+	ldi,    // Ldi
+	lds,    // Lds
+	nop,    // Lds16 ****
+	nop,    // Lpm ****
+	nop,    // LpmEnhanced ****
+	lsr,    // Lsr
+	lsr,    // LsrReduced
+	mov,    // Mov
+	mov,    // MovReduced
+	movw,   // Movw
+	mul,    // Mul
+	muls,   // Muls
+	mulsu,  // Mulsu
+	neg,    // Neg
+	neg,    // NegReduced
+	nop,    // Nop
+	or,     // Or
+	or,     // OrReduced
+	ori,    // Ori
+	nop,    // Out ****
+	nop,    // OutReduced ****
+	pop,    // Pop
+	pop,    // PopReduced
+	push,   // Push
+	push,   // PushReduced
 	rcall,  // Rcall
-	ret,  // Ret
-	reti,  // Reti
-	rjmp,  // Rjmp
-	ror,  // Ror
-	ror,  // RorReduced
-	sbc,  // Sbc
-	sbc,  // SbcReduced
-	sbci,  // Sbci
-	nop,  // Sbi ****
-	nop,  // Sbic ****
-	nop,  // Sbis ****
-	sbiw, // Sbiw
-	nop,  // Sbrc ****
-	nop,  // SbrcReduced ****
-	nop,  // Sbrs ****
-	nop,  // SbrsReduced ****
-	nop,  // Sleep ****
-	nop, // Spm ****
-	nop, // SpmXmega ****
-	st, // StClassic
-	st, // StClassicReduced
-	st,  // StMinimal
-	st,  // StMinimalReduced
-	std, // Std
-	sts, // Sts
-	nop, // Sts16 ****
-	sub,  // Sub
-	sub,  // SubReduced
-	subi,  // Subi
-	swap,  // Swap
-	swap,  // SwapReduced
-	nop,  // Wdr ****
-	xch, // Xch
+	ret,    // Ret
+	reti,   // Reti
+	rjmp,   // Rjmp
+	ror,    // Ror
+	ror,    // RorReduced
+	sbc,    // Sbc
+	sbc,    // SbcReduced
+	sbci,   // Sbci
+	nop,    // Sbi ****
+	nop,    // Sbic ****
+	nop,    // Sbis ****
+	sbiw,   // Sbiw
+	sbrc,   // Sbrc
+	sbrc,   // SbrcReduced
+	sbrs,   // Sbrs
+	sbrs,   // SbrsReduced
+	nop,    // Sleep ****
+	nop,    // Spm ****
+	nop,    // SpmXmega ****
+	st,     // StClassic
+	st,     // StClassicReduced
+	st,     // StMinimal
+	st,     // StMinimalReduced
+	std,    // Std
+	sts,    // Sts
+	nop,    // Sts16 ****
+	sub,    // Sub
+	sub,    // SubReduced
+	subi,   // Subi
+	swap,   // Swap
+	swap,   // SwapReduced
+	nop,    // Wdr ****
+	xch,    // Xch
 }
