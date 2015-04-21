@@ -186,3 +186,73 @@ func (tc tCpuDm) Diff(other testcase.Testable) interface{} {
 		return cDiff
 	}
 }
+
+type tIoMem struct {
+	data [96]byte
+	bad  bool
+}
+
+func (im *tIoMem) ReadData(addr instr.Addr) byte {
+	if addr < 0x20 || addr >= 0x60 {
+		im.bad = true
+		return 0
+	}
+	return im.data[addr]
+}
+
+func (im *tIoMem) WriteData(addr instr.Addr, val byte) {
+	if addr < 0x20 || addr >= 0x60 {
+		im.bad = true
+		return
+	}
+	im.data[addr] = val
+}
+
+func (im *tIoMem) ReadProgram(addr instr.Addr) uint16 {
+	return 0
+}
+
+func (this *tIoMem) diff(that *tIoMem) string {
+	if this.bad || that.bad {
+		return "MEM: out of range access"
+	}
+	var mThis, mThat string
+	var thisM, thatM []string
+	for i := 0; i < 32; i++ {
+		if this.data[i] != that.data[i] {
+			thisM = append(thisM, fmt.Sprintf("%d=%02x", i, this.data[i]))
+			thatM = append(thatM, fmt.Sprintf("%d=%02x", i, that.data[i]))
+		}
+	}
+	if thisM != nil {
+		mThis = "MEM[" + strings.Join(thisM, ",") + "]"
+		mThat = "MEM[" + strings.Join(thatM, ",") + "]"
+		return mThis + "\n" + mThat
+	}
+	return ""
+}
+
+type tCpuIm struct {
+	tCpu
+	imem tIoMem
+}
+
+func (tc tCpuIm) Equals(other testcase.Testable) bool {
+	o := other.(tCpuIm)
+	return tc.tCpu.Equals(o.tCpu) && tc.imem == o.imem
+}
+
+func (tc tCpuIm) Diff(other testcase.Testable) interface{} {
+	o := other.(tCpuIm)
+	cDiff := tc.tCpu.Diff(o.tCpu)
+	mDiff := tc.imem.diff(&o.imem)
+	if mDiff != "" {
+		if cDiff != nil {
+			return fmt.Sprintf("%s", cDiff) + "\n" + mDiff
+		} else {
+			return "\n" + mDiff
+		}
+	} else {
+		return cDiff
+	}
+}

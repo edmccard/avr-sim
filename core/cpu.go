@@ -50,11 +50,13 @@ func (c *Cpu) Step(mem Memory, d *instr.Decoder) {
 	opFuncs[mnem](c, &c.am, mem)
 	if c.skip {
 		c.skip = false
-		op, op2, mnem = c.fetch(mem, d)
+		c.fetch(mem, d)
 	}
 }
 
-func (c *Cpu) fetch(mem Memory, d *instr.Decoder) (instr.Opcode, instr.Opcode, instr.Mnemonic) {
+func (c *Cpu) fetch(mem Memory, d *instr.Decoder) (instr.Opcode, instr.Opcode,
+	instr.Mnemonic) {
+
 	var op2 instr.Opcode
 	op := instr.Opcode(mem.ReadProgram(instr.Addr(c.pc)))
 	c.pcInc(1)
@@ -677,6 +679,38 @@ func cpse(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	}
 }
 
+func sbic(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	if (mem.ReadData(am.A1+0x20) & (1 << uint(am.A2))) == 0 {
+		cpu.skip = true
+	}
+}
+
+func sbis(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	if (mem.ReadData(am.A1+0x20) & (1 << uint(am.A2))) != 0 {
+		cpu.skip = true
+	}
+}
+
+func in(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	cpu.reg[am.A2] = int(mem.ReadData(am.A1 + 0x20))
+}
+
+func out(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	mem.WriteData(am.A1+0x20, byte(cpu.reg[am.A2]))
+}
+
+func cbi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	addr := am.A1 + 0x20
+	val := mem.ReadData(addr) & ^(1 << uint(am.A2))
+	mem.WriteData(addr, val)
+}
+
+func sbi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+	addr := am.A1 + 0x20
+	val := mem.ReadData(addr) | ^(1 << uint(am.A2))
+	mem.WriteData(addr, val)
+}
+
 type OpFunc func(*Cpu, *instr.AddrMode, Memory)
 
 var opFuncs = [...]OpFunc{
@@ -701,7 +735,7 @@ var opFuncs = [...]OpFunc{
 	bst,    // Bst
 	bst,    // BstReduced
 	call,   // Call
-	nop,    // Cbi ****
+	cpi,    // Cbi
 	com,    // Com
 	com,    // ComReduced
 	cp,     // Cp
@@ -709,8 +743,8 @@ var opFuncs = [...]OpFunc{
 	cpc,    // Cpc
 	cpc,    // CpcReduced
 	cpi,    // Cpi
-	nop,    // Cpse ****
-	nop,    // CpseReduced ****
+	cpse,   // Cpse
+	cpse,   // CpseReduced
 	dec,    // Dec
 	dec,    // DecReduced
 	nop,    // Des ****
@@ -725,8 +759,8 @@ var opFuncs = [...]OpFunc{
 	fmulsu, // Fmulsu
 	icall,  // Icall
 	ijmp,   // Ijmp
-	nop,    // In ****
-	nop,    // InReduced ****
+	in,     // In
+	in,     // InReduced
 	inc,    // Inc
 	inc,    // IncReduced
 	jmp,    // Jmp
@@ -757,8 +791,8 @@ var opFuncs = [...]OpFunc{
 	or,     // Or
 	or,     // OrReduced
 	ori,    // Ori
-	nop,    // Out ****
-	nop,    // OutReduced ****
+	out,    // Out
+	out,    // OutReduced
 	pop,    // Pop
 	pop,    // PopReduced
 	push,   // Push
@@ -772,9 +806,9 @@ var opFuncs = [...]OpFunc{
 	sbc,    // Sbc
 	sbc,    // SbcReduced
 	sbci,   // Sbci
-	nop,    // Sbi ****
-	nop,    // Sbic ****
-	nop,    // Sbis ****
+	sbi,    // Sbi
+	sbic,   // Sbic
+	sbis,   // Sbis
 	sbiw,   // Sbiw
 	sbrc,   // Sbrc
 	sbrc,   // SbrcReduced

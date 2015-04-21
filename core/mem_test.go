@@ -310,7 +310,7 @@ func TestSBR(t *testing.T) {
 }
 
 func TestStepBranch(t *testing.T) {
-	var cases = []struct{
+	var cases = []struct {
 		pcPre, op, pcPost int
 	}{
 		{0x1002, 0xf7e8, 0x1000},
@@ -331,6 +331,28 @@ func TestStepBranch(t *testing.T) {
 		}
 	}
 	testcase.NewTree(t, "BRA", run).Start(tCpuDm{})
+}
+
+func TestIn(t *testing.T) {
+	var cases = []struct {
+		mnem                      instr.Mnemonic
+		port, addr, val, reg, res int
+	}{
+		{instr.In, 0x00, 0x20, 0x44, 0x01, 0x44},
+	}
+	run := func(tree testcase.Tree, init, exp testcase.Testable) {
+		for n, c := range cases {
+			initCpu := init.(tCpuIm)
+			initCpu.imem.data[c.addr] = byte(c.val)
+			initCpu.am.A1 = instr.Addr(c.port)
+			initCpu.am.A2 = instr.Addr(c.reg)
+			expCpu := initCpu
+			expCpu.SetReg(instr.Addr(c.reg), byte(c.res))
+			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.am, &initCpu.imem)
+			tree.Run(fmt.Sprintf("%s [%d]", c.mnem, n), initCpu, expCpu)
+		}
+	}
+	testcase.NewTree(t, "IOP", run).Start(tCpuIm{})
 }
 
 var setXmega = instr.NewSetXmega()
