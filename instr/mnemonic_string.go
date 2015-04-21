@@ -4,10 +4,13 @@ package instr
 
 import "fmt"
 
-const _Mnemonic_name = "ReservedAdcAdcReducedAddAddReducedAdiwAndAndReducedAndiAsrAsrReducedBclrBldBldReducedBrbcBrbsBreakBsetBstBstReducedCallCbiComComReducedCpCpReducedCpcCpcReducedCpiCpseCpseReducedDecDecReducedDesEicallEijmpElpmElpmEnhancedEorEorReducedFmulFmulsFmulsuIcallIjmpInInReducedIncIncReducedJmpLacLasLatLdClassicLdClassicReducedLdMinimalLdMinimalReducedLddLdiLdsLds16LpmLpmEnhancedLsrLsrReducedMovMovReducedMovwMulMulsMulsuNegNegReducedNopOrOrReducedOriOutOutReducedPopPopReducedPushPushReducedRcallRetRetiRjmpRorRorReducedSbcSbcReducedSbciSbiSbicSbisSbiwSbrcSbrcReducedSbrsSbrsReducedSleepSpmSpmXmegaStClassicStClassicReducedStMinimalStMinimalReducedStdStsSts16SubSubReducedSubiSwapSwapReducedWdrXchNumMnems"
+const _Mnemonic_name = "ReservedAdcAdcReducedAddAddReducedAdiwAndAndReducedAndiAsrAsrReducedBclrBldBldReducedBrbcBrbsBreakBsetBstBstReducedCallCbiComComReducedCpCpReducedCpcCpcReducedCpiCpseCpseReducedDecDecReducedDesEicallEijmpElpmElpmEnhancedEorEorReducedFmulFmulsFmulsuIcallIjmpInInReducedIncIncReducedJmpLacLasLatLdLdReducedLdMinimalLdMinimalReducedLddLdiLdsLds16LpmLpmEnhancedLsrLsrReducedMovMovReducedMovwMulMulsMulsuNegNegReducedNopOrOrReducedOriOutOutReducedPopPopReducedPushPushReducedRcallRetRetiRjmpRorRorReducedSbcSbcReducedSbciSbiSbicSbisSbiwSbrcSbrcReducedSbrsSbrsReducedSleepSpmSpmXmegaStStReducedStMinimalStMinimalReducedStdStsSts16SubSubReducedSubiSwapSwapReducedWdrXchNumMnems"
 
-var _Mnemonic_index = [...]uint16{0, 8, 11, 21, 24, 34, 38, 41, 51, 55, 58, 68, 72, 75, 85, 89, 93, 98, 102, 105, 115, 119, 122, 125, 135, 137, 146, 149, 159, 162, 166, 177, 180, 190, 193, 199, 204, 208, 220, 223, 233, 237, 242, 248, 253, 257, 259, 268, 271, 281, 284, 287, 290, 293, 302, 318, 327, 343, 346, 349, 352, 357, 360, 371, 374, 384, 387, 397, 401, 404, 408, 413, 416, 426, 429, 431, 440, 443, 446, 456, 459, 469, 473, 484, 489, 492, 496, 500, 503, 513, 516, 526, 530, 533, 537, 541, 545, 549, 560, 564, 575, 580, 583, 591, 600, 616, 625, 641, 644, 647, 652, 655, 665, 669, 673, 684, 687, 690, 698}
+var _Mnemonic_index = [...]uint16{0, 8, 11, 21, 24, 34, 38, 41, 51, 55, 58, 68, 72, 75, 85, 89, 93, 98, 102, 105, 115, 119, 122, 125, 135, 137, 146, 149, 159, 162, 166, 177, 180, 190, 193, 199, 204, 208, 220, 223, 233, 237, 242, 248, 253, 257, 259, 268, 271, 281, 284, 287, 290, 293, 295, 304, 313, 329, 332, 335, 338, 343, 346, 357, 360, 370, 373, 383, 387, 390, 394, 399, 402, 412, 415, 417, 426, 429, 432, 442, 445, 455, 459, 470, 475, 478, 482, 486, 489, 499, 502, 512, 516, 519, 523, 527, 531, 535, 546, 550, 561, 566, 569, 577, 579, 588, 597, 613, 616, 619, 624, 627, 637, 641, 645, 656, 659, 662, 670}
 
+// String returns the string representation of a Mnemonic. For
+// example,
+//  Add.String() == "Add"
 func (i Mnemonic) String() string {
 	if i < 0 || i+1 >= Mnemonic(len(_Mnemonic_index)) {
 		return fmt.Sprintf("Mnemonic(%d)", i)

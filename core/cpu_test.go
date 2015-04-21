@@ -2,10 +2,18 @@ package cpu
 
 import (
 	"fmt"
-	"github.com/edmccard/avr-sim/instr"
 	"github.com/edmccard/testcase"
 	"strings"
 )
+
+const _Flag_name = "CZNVSHTI"
+
+func (i Flag) String() string {
+	if i < 0 || i > 7 {
+		return fmt.Sprintf("Flag(%d)", i)
+	}
+	return fmt.Sprintf("%c", _Flag_name[i])
+}
 
 // tCpu wraps Cpu to implement Testable, and to simplify setting up
 // initial state for tests.
@@ -105,7 +113,7 @@ type tDataMem struct {
 	writeAttempts string
 }
 
-func (tdm *tDataMem) ReadData(addr instr.Addr) byte {
+func (tdm *tDataMem) ReadData(addr Addr) byte {
 	var val byte = 0x00
 	if len(tdm.readVals) != 0 {
 		val = byte(tdm.readVals[0])
@@ -123,11 +131,11 @@ func (tdm *tDataMem) SetReadData(vals []int) {
 	}
 }
 
-func (tdm *tDataMem) WriteData(addr instr.Addr, val byte) {
+func (tdm *tDataMem) WriteData(addr Addr, val byte) {
 	tdm.writeAttempts += fmt.Sprintf("%04x->%02x ", addr, val)
 }
 
-func (tdm *tDataMem) ReadProgram(addr instr.Addr) uint16 {
+func (tdm *tDataMem) ReadProgram(addr Addr) uint16 {
 	var val uint16 = 0x0000
 	if len(tdm.readVals) != 0 {
 		val = uint16(tdm.readVals[0])
@@ -192,7 +200,7 @@ type tIoMem struct {
 	bad  bool
 }
 
-func (im *tIoMem) ReadData(addr instr.Addr) byte {
+func (im *tIoMem) ReadData(addr Addr) byte {
 	if addr < 0x20 || addr >= 0x60 {
 		im.bad = true
 		return 0
@@ -200,7 +208,7 @@ func (im *tIoMem) ReadData(addr instr.Addr) byte {
 	return im.data[addr]
 }
 
-func (im *tIoMem) WriteData(addr instr.Addr, val byte) {
+func (im *tIoMem) WriteData(addr Addr, val byte) {
 	if addr < 0x20 || addr >= 0x60 {
 		im.bad = true
 		return
@@ -208,7 +216,7 @@ func (im *tIoMem) WriteData(addr instr.Addr, val byte) {
 	im.data[addr] = val
 }
 
-func (im *tIoMem) ReadProgram(addr instr.Addr) uint16 {
+func (im *tIoMem) ReadProgram(addr Addr) uint16 {
 	return 0
 }
 

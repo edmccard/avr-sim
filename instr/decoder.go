@@ -1,20 +1,21 @@
+// Package instr implements instruction decoding for 8-bit Atmel AVR opcodes.
 package instr
 
-// A Decoder finds the mnemonic, instruction length, and address mode
+// A Decoder finds the mnemonic, instruction length, and operands
 // for opcodes in a particular instruction set.
 type Decoder struct {
 	isReduced bool
 	set       Set
 }
 
-// NewDecoder returns a Decoder that decodes opcodes a000-afff as Ldd
-// or Std, if present in the given instruction set.
+// NewDecoder returns a Decoder for devices other than Reduced Core
+// tiny devices.
 func NewDecoder(set Set) Decoder {
 	return Decoder{isReduced: false, set: set}
 }
 
-// NewReducedDecoder returns a Decoder that decodes opcodes a000-afff
-// as Lds16 or Sts16, to simulate Reduced Core tiny devices.
+// NewReducedDecoder returns a Decoder for Reduced Core tiny devices
+// (ATtiny4/5/9/10; GCC avrtiny).
 func NewReducedDecoder() Decoder {
 	return Decoder{isReduced: true, set: setReduced}
 }
@@ -30,8 +31,8 @@ func (d Decoder) DecodeMnem(op Opcode) (Mnemonic, int) {
 }
 
 func (d *Decoder) decodeAnyMnem(op Opcode) (Mnemonic, int) {
-	opNibble1 := op.Nibble1()
-	opNibble0 := op.Nibble0()
+	opnibble1 := op.nibble1()
+	opnibble0 := op.nibble0()
 	// Hand-rolled binary search.
 	switch {
 	case op < 0x8000:
@@ -56,13 +57,13 @@ func (d *Decoder) decodeAnyMnem(op Opcode) (Mnemonic, int) {
 							case op < 0x0300:
 								return Muls, 1
 							case op < 0x0380:
-								if opNibble0 < 0x8 {
+								if opnibble0 < 0x8 {
 									return Mulsu, 1
 								} else {
 									return Fmul, 1
 								}
 							default:
-								if opNibble0 < 0x8 {
+								if opnibble0 < 0x8 {
 									return Fmuls, 1
 								} else {
 									return Fmulsu, 1
@@ -128,26 +129,26 @@ func (d *Decoder) decodeAnyMnem(op Opcode) (Mnemonic, int) {
 					case op < 0x8400:
 						if op < 0x8200 {
 							switch {
-							case opNibble0 < 0x8:
-								if opNibble0 < 0x1 {
+							case opnibble0 < 0x8:
+								if opnibble0 < 0x1 {
 									return d.decodeLdMinimal(op)
 								} else {
 									return Ldd, 1
 								}
-							case opNibble0 < 0x9:
+							case opnibble0 < 0x9:
 								return d.decodeLdClassic(op)
 							default:
 								return Ldd, 1
 							}
 						} else {
 							switch {
-							case opNibble0 < 0x8:
-								if opNibble0 < 0x1 {
+							case opnibble0 < 0x8:
+								if opnibble0 < 0x1 {
 									return d.decodeStMinimal(op)
 								} else {
 									return Std, 1
 								}
-							case opNibble0 < 0x9:
+							case opnibble0 < 0x9:
 								return d.decodeStClassic(op)
 							default:
 								return Std, 1
@@ -174,10 +175,10 @@ func (d *Decoder) decodeAnyMnem(op Opcode) (Mnemonic, int) {
 				case op < 0x9400:
 					if op < 0x9200 {
 						switch {
-						case opNibble0 < 0x8:
+						case opnibble0 < 0x8:
 							switch {
-							case opNibble0 < 0x4:
-								switch opNibble0 {
+							case opnibble0 < 0x4:
+								switch opnibble0 {
 								case 0x0:
 									return Lds, 2
 								case 0x3:
@@ -185,28 +186,28 @@ func (d *Decoder) decodeAnyMnem(op Opcode) (Mnemonic, int) {
 								default:
 									return d.decodeLdClassic(op)
 								}
-							case opNibble0 < 0x6:
+							case opnibble0 < 0x6:
 								return LpmEnhanced, 1
 							default:
 								return ElpmEnhanced, 1
 							}
-						case opNibble0 < 0xc:
-							if opNibble0 == 0x8 || opNibble0 == 0xb {
+						case opnibble0 < 0xc:
+							if opnibble0 == 0x8 || opnibble0 == 0xb {
 								return Reserved, 1
 							} else {
 								return d.decodeLdClassic(op)
 							}
-						case opNibble0 < 0xf:
+						case opnibble0 < 0xf:
 							return d.decodeLdClassic(op)
 						default:
 							return d.decodePop(op)
 						}
 					} else {
 						switch {
-						case opNibble0 < 0x8:
+						case opnibble0 < 0x8:
 							switch {
-							case opNibble0 < 0x4:
-								switch opNibble0 {
+							case opnibble0 < 0x4:
+								switch opnibble0 {
 								case 0x0:
 									return Sts, 2
 								case 0x3:
@@ -214,19 +215,19 @@ func (d *Decoder) decodeAnyMnem(op Opcode) (Mnemonic, int) {
 								default:
 									return d.decodeStClassic(op)
 								}
-							case opNibble0 < 0x6:
-								if opNibble0 < 5 {
+							case opnibble0 < 0x6:
+								if opnibble0 < 5 {
 									return Xch, 1
 								} else {
 									return Las, 1
 								}
-							case opNibble0 < 0x7:
+							case opnibble0 < 0x7:
 								return Lac, 1
 							default:
 								return Lat, 1
 							}
-						case opNibble0 < 0xf:
-							if opNibble0 == 0x8 || opNibble0 == 0xb {
+						case opnibble0 < 0xf:
+							if opnibble0 == 0x8 || opnibble0 == 0xb {
 								return Reserved, 1
 							} else {
 								return d.decodeStClassic(op)
@@ -237,44 +238,44 @@ func (d *Decoder) decodeAnyMnem(op Opcode) (Mnemonic, int) {
 					}
 				case op < 0x9600:
 					switch {
-					case opNibble0 < 0x8:
+					case opnibble0 < 0x8:
 						switch {
-						case opNibble0 < 0x4:
+						case opnibble0 < 0x4:
 							switch {
-							case opNibble0 < 0x2:
-								if opNibble0 < 0x1 {
+							case opnibble0 < 0x2:
+								if opnibble0 < 0x1 {
 									return d.decodeCom(op)
 								} else {
 									return d.decodeNeg(op)
 								}
-							case opNibble0 < 0x3:
+							case opnibble0 < 0x3:
 								return d.decodeSwap(op)
 							default:
 								return d.decodeInc(op)
 							}
-						case opNibble0 < 0x6:
-							if opNibble0 < 0x5 {
+						case opnibble0 < 0x6:
+							if opnibble0 < 0x5 {
 								return Reserved, 1
 							} else {
 								return d.decodeAsr(op)
 							}
-						case opNibble0 < 0x7:
+						case opnibble0 < 0x7:
 							return d.decodeLsr(op)
 						default:
 							return d.decodeRor(op)
 						}
-					case opNibble0 < 0xc:
+					case opnibble0 < 0xc:
 						switch {
-						case opNibble0 < 0xa:
-							if opNibble0 == 0x8 {
+						case opnibble0 < 0xa:
+							if opnibble0 == 0x8 {
 								if op < 0x9500 {
-									if opNibble1 < 0x8 {
+									if opnibble1 < 0x8 {
 										return Bset, 1
 									} else {
 										return Bclr, 1
 									}
 								} else {
-									switch opNibble1 {
+									switch opnibble1 {
 									case 0x0:
 										return Ret, 1
 									case 0x1:
@@ -299,7 +300,7 @@ func (d *Decoder) decodeAnyMnem(op Opcode) (Mnemonic, int) {
 								}
 							} else {
 								if op < 0x9500 {
-									switch opNibble1 {
+									switch opnibble1 {
 									case 0x0:
 										return Ijmp, 1
 									case 0x1:
@@ -308,7 +309,7 @@ func (d *Decoder) decodeAnyMnem(op Opcode) (Mnemonic, int) {
 										return Reserved, 1
 									}
 								} else {
-									switch opNibble1 {
+									switch opnibble1 {
 									case 0x0:
 										return Icall, 1
 									case 0x1:
@@ -318,7 +319,7 @@ func (d *Decoder) decodeAnyMnem(op Opcode) (Mnemonic, int) {
 									}
 								}
 							}
-						case opNibble0 < 0xb:
+						case opnibble0 < 0xb:
 							return d.decodeDec(op)
 						default:
 							if op < 0x9500 {
@@ -327,7 +328,7 @@ func (d *Decoder) decodeAnyMnem(op Opcode) (Mnemonic, int) {
 								return Reserved, 1
 							}
 						}
-					case opNibble0 < 0xe:
+					case opnibble0 < 0xe:
 						return Jmp, 2
 					default:
 						return Call, 2
@@ -524,17 +525,17 @@ func (d Decoder) decodeStMinimal(op Opcode) (Mnemonic, int) {
 
 func (d Decoder) decodeLdClassic(op Opcode) (Mnemonic, int) {
 	if ((op & 0x1f0) >> 4) < 16 {
-		return LdClassic, 1
+		return Ld, 1
 	} else {
-		return LdClassicReduced, 1
+		return LdReduced, 1
 	}
 }
 
 func (d Decoder) decodeStClassic(op Opcode) (Mnemonic, int) {
 	if ((op & 0x1f0) >> 4) < 16 {
-		return StClassic, 1
+		return St, 1
 	} else {
-		return StClassicReduced, 1
+		return StReduced, 1
 	}
 }
 
@@ -619,7 +620,7 @@ func (d Decoder) decodeDec(op Opcode) (Mnemonic, int) {
 }
 
 func (d Decoder) decodeIn(op Opcode) (Mnemonic, int) {
-	if (op.Nibble2() & 0x1) == 0 {
+	if (op.nibble2() & 0x1) == 0 {
 		return In, 1
 	} else {
 		return InReduced, 1
@@ -627,7 +628,7 @@ func (d Decoder) decodeIn(op Opcode) (Mnemonic, int) {
 }
 
 func (d Decoder) decodeOut(op Opcode) (Mnemonic, int) {
-	if (op.Nibble2() & 0x1) == 0 {
+	if (op.nibble2() & 0x1) == 0 {
 		return Out, 1
 	} else {
 		return OutReduced, 1
@@ -635,7 +636,7 @@ func (d Decoder) decodeOut(op Opcode) (Mnemonic, int) {
 }
 
 func (d Decoder) decodeBld(op Opcode) (Mnemonic, int) {
-	if op.Nibble0() > 0x7 {
+	if op.nibble0() > 0x7 {
 		return Reserved, 1
 	}
 	if op < 0xf900 {
@@ -646,7 +647,7 @@ func (d Decoder) decodeBld(op Opcode) (Mnemonic, int) {
 }
 
 func (d Decoder) decodeBst(op Opcode) (Mnemonic, int) {
-	if op.Nibble0() > 0x7 {
+	if op.nibble0() > 0x7 {
 		return Reserved, 1
 	}
 	if op < 0xfb00 {
@@ -657,7 +658,7 @@ func (d Decoder) decodeBst(op Opcode) (Mnemonic, int) {
 }
 
 func (d Decoder) decodeSbrc(op Opcode) (Mnemonic, int) {
-	if op.Nibble0() > 0x7 {
+	if op.nibble0() > 0x7 {
 		return Reserved, 1
 	}
 	if op < 0xfd00 {
@@ -668,7 +669,7 @@ func (d Decoder) decodeSbrc(op Opcode) (Mnemonic, int) {
 }
 
 func (d Decoder) decodeSbrs(op Opcode) (Mnemonic, int) {
-	if op.Nibble0() > 0x7 {
+	if op.nibble0() > 0x7 {
 		return Reserved, 1
 	}
 	if op < 0xff00 {
@@ -678,7 +679,10 @@ func (d Decoder) decodeSbrs(op Opcode) (Mnemonic, int) {
 	}
 }
 
-// DecodeAddr fills in an address mode for an instruction.
-func (d *Decoder) DecodeAddr(am *AddrMode, mn Mnemonic, op1, op2 Opcode) {
-	decoders[OpModes[mn]](am, op1, op2)
+// DecodeOperands fills in the operands for an instruction. For
+// single-opcode instructions, op2 is ignored.
+func (d *Decoder) DecodeOperands(ops *Operands, mn Mnemonic, op1, op2 Opcode) {
+	mode := opModes[mn]
+	decoders[mode](ops, op1, op2)
+	ops.Mode = mode
 }

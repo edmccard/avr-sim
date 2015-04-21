@@ -1,7 +1,10 @@
 package instr
 
+// A Set records which opcodes are supported by a device or class of
+// devices.
 type Set []bool
 
+// NewSetMinimal corresponds to GCC -mmcu=avr1
 func NewSetMinimal() Set {
 	// ATtiny11/12/15/28
 	set := make([]bool, NumMnems)
@@ -9,6 +12,7 @@ func NewSetMinimal() Set {
 	return set
 }
 
+// NewSetClassic8k corresponds to GCC -mmcu=avr2
 func NewSetClassic8k() Set {
 	// ATtiny22/26
 	set := make([]bool, NumMnems)
@@ -17,12 +21,12 @@ func NewSetClassic8k() Set {
 	set[Sbiw] = true
 	set[Ijmp] = true
 	set[Icall] = true
-	set[LdClassic] = true
-	set[LdClassicReduced] = true
+	set[Ld] = true
+	set[LdReduced] = true
 	set[Ldd] = true
 	set[Lds] = true
-	set[StClassic] = true
-	set[StClassicReduced] = true
+	set[St] = true
+	set[StReduced] = true
 	set[Std] = true
 	set[Sts] = true
 	set[Pop] = true
@@ -32,6 +36,7 @@ func NewSetClassic8k() Set {
 	return set
 }
 
+// NewSetClassic128k corresponds to GCC -mmcu=avr3/avr31
 func NewSetClassic128k() Set {
 	// ATmega103/603
 	set := make([]bool, NumMnems)
@@ -43,6 +48,7 @@ func NewSetClassic128k() Set {
 	return set
 }
 
+// NewSetEnhanced8k corresponds to GCC -mmcu=avr4
 func NewSetEnhanced8k() Set {
 	// ATmega8/83/85/8515
 	set := make([]bool, NumMnems)
@@ -60,6 +66,7 @@ func NewSetEnhanced8k() Set {
 	return set
 }
 
+// NewSetEnhanced128k corresponds to GCC -mmcu=avr5/avr51
 func NewSetEnhanced128k() Set {
 	set := make([]bool, NumMnems)
 	copy(set, NewSetEnhanced8k())
@@ -70,6 +77,7 @@ func NewSetEnhanced128k() Set {
 	return set
 }
 
+// NewSetEnhanced4m corresponds to GCC -mmcu=avr6
 func NewSetEnhanced4m() Set {
 	set := make([]bool, NumMnems)
 	copy(set, NewSetEnhanced128k())
@@ -81,6 +89,7 @@ func NewSetEnhanced4m() Set {
 	return set
 }
 
+// NewSetXmega corresponds to GCC -mmcu=avrxmega2/4/5/6/7
 func NewSetXmega() Set {
 	set := make([]bool, NumMnems)
 	copy(set, NewSetEnhanced4m())
@@ -93,13 +102,6 @@ func NewSetXmega() Set {
 	set[Las] = true
 	set[Lat] = true
 	set[Xch] = true
-	return set
-}
-
-func NewSetReduced() Set {
-	// ATtiny4/5/9/10
-	set := make([]bool, NumMnems)
-	copy(set, setReduced)
 	return set
 }
 
@@ -157,8 +159,8 @@ var setReduced = []bool{
 	false, // Lac
 	false, // Las
 	false, // Lat
-	false, // LdClassic
-	true,  // LdClassicReduced
+	false, // Ld
+	true,  // LdReduced
 	false, // LdMinimal
 	true,  // LdMinimalReduced
 	false, // Ldd
@@ -207,8 +209,8 @@ var setReduced = []bool{
 	true,  // Sleep
 	false, // Spm
 	false, // SpmXmega
-	false, // StClassic
-	true,  // StClassicReduced
+	false, // St
+	true,  // StReduced
 	false, // StMinimal
 	true,  // StMinimalReduced
 	false, // Std
@@ -277,8 +279,8 @@ var setMinimal = []bool{
 	false, // Lac
 	false, // Las
 	false, // Lat
-	false, // LdClassic
-	false, // LdClassicReduced
+	false, // Ld
+	false, // LdReduced
 	true,  // LdMinimal
 	true,  // LdMinimalReduced
 	false, // Ldd
@@ -327,8 +329,8 @@ var setMinimal = []bool{
 	true,  // Sleep
 	false, // Spm
 	false, // SpmXmega
-	false, // StClassic
-	false, // StClassicReduced
+	false, // St
+	false, // StReduced
 	true,  // StMinimal
 	true,  // StMinimalReduced
 	false, // Std

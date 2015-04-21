@@ -178,12 +178,12 @@ var mnems = map[Mnemonic]struct {
 	In: {1024,
 		func(o Opcode) bool {
 			return o >= 0xb000 && o < 0xb800 &&
-				(o.Nibble2()&0x1) == 0
+				(o.nibble2()&0x1) == 0
 		}},
 	InReduced: {1024,
 		func(o Opcode) bool {
 			return o >= 0xb000 && o < 0xb800 &&
-				(o.Nibble2()&0x1) != 0
+				(o.nibble2()&0x1) != 0
 		}},
 	Inc: {16,
 		func(o Opcode) bool {
@@ -218,12 +218,12 @@ var mnems = map[Mnemonic]struct {
 		func(o Opcode) bool {
 			return o >= 0x8100 && o < 0x8200 && (o&0xf) == 0
 		}},
-	LdClassic: {128,
+	Ld: {128,
 		func(o Opcode) bool {
 			if ((o & 0x1f0) >> 4) >= 16 {
 				return false
 			}
-			on0 := o.Nibble0()
+			on0 := o.nibble0()
 			switch {
 			case o >= 0x8000 && o < 0x8200:
 				return on0 == 8
@@ -234,12 +234,12 @@ var mnems = map[Mnemonic]struct {
 				return false
 			}
 		}},
-	LdClassicReduced: {128,
+	LdReduced: {128,
 		func(o Opcode) bool {
 			if ((o & 0x1f0) >> 4) < 16 {
 				return false
 			}
-			on0 := o.Nibble0()
+			on0 := o.nibble0()
 			switch {
 			case o >= 0x8000 && o < 0x8200:
 				return on0 == 8
@@ -255,10 +255,10 @@ var mnems = map[Mnemonic]struct {
 			if o < 0x8000 || o >= 0xb000 {
 				return false
 			}
-			if ((o.Nibble2() >> 1) & 0x1) == 1 {
+			if ((o.nibble2() >> 1) & 0x1) == 1 {
 				return false
 			}
-			if o < 0x8200 && (o.Nibble0() == 0 || o.Nibble0() == 8) {
+			if o < 0x8200 && (o.nibble0() == 0 || o.nibble0() == 8) {
 				return false
 			}
 			return true
@@ -269,21 +269,21 @@ var mnems = map[Mnemonic]struct {
 		}},
 	Lds: {32,
 		func(o Opcode) bool {
-			return o >= 0x9000 && o < 0x9200 && o.Nibble0() == 0
+			return o >= 0x9000 && o < 0x9200 && o.nibble0() == 0
 		}},
 	Lpm: {1, func(o Opcode) bool { return o == 0x95c8 }},
 	LpmEnhanced: {64,
 		func(o Opcode) bool {
 			return o >= 0x9000 && o < 0x9200 &&
-				(o.Nibble0() == 4 || o.Nibble0() == 5)
+				(o.nibble0() == 4 || o.nibble0() == 5)
 		}},
 	Lsr: {16,
 		func(o Opcode) bool {
-			return o >= 0x9400 && o < 0x9500 && o.Nibble0() == 6
+			return o >= 0x9400 && o < 0x9500 && o.nibble0() == 6
 		}},
 	LsrReduced: {16,
 		func(o Opcode) bool {
-			return o >= 0x9500 && o < 0x9600 && o.Nibble0() == 6
+			return o >= 0x9500 && o < 0x9600 && o.nibble0() == 6
 		}},
 	Mov: {768,
 		func(o Opcode) bool {
@@ -307,15 +307,15 @@ var mnems = map[Mnemonic]struct {
 		}},
 	Mulsu: {64,
 		func(o Opcode) bool {
-			return o >= 0x0300 && o < 0x0380 && o.Nibble0() < 8
+			return o >= 0x0300 && o < 0x0380 && o.nibble0() < 8
 		}},
 	Neg: {16,
 		func(o Opcode) bool {
-			return o >= 0x9400 && o < 0x9500 && o.Nibble0() == 1
+			return o >= 0x9400 && o < 0x9500 && o.nibble0() == 1
 		}},
 	NegReduced: {16,
 		func(o Opcode) bool {
-			return o >= 0x9500 && o < 0x9600 && o.Nibble0() == 1
+			return o >= 0x9500 && o < 0x9600 && o.nibble0() == 1
 		}},
 	Nop: {1, func(o Opcode) bool { return o == 0x0000 }},
 	Or: {768,
@@ -333,28 +333,28 @@ var mnems = map[Mnemonic]struct {
 	Out: {1024,
 		func(o Opcode) bool {
 			return o >= 0xb800 && o < 0xc000 &&
-				(o.Nibble2()&0x1) == 0
+				(o.nibble2()&0x1) == 0
 		}},
 	OutReduced: {1024,
 		func(o Opcode) bool {
 			return o >= 0xb800 && o < 0xc000 &&
-				(o.Nibble2()&0x1) != 0
+				(o.nibble2()&0x1) != 0
 		}},
 	Pop: {16,
 		func(o Opcode) bool {
-			return o >= 0x9000 && o < 0x9100 && o.Nibble0() == 0xf
+			return o >= 0x9000 && o < 0x9100 && o.nibble0() == 0xf
 		}},
 	PopReduced: {16,
 		func(o Opcode) bool {
-			return o >= 0x9100 && o < 0x9200 && o.Nibble0() == 0xf
+			return o >= 0x9100 && o < 0x9200 && o.nibble0() == 0xf
 		}},
 	Push: {16,
 		func(o Opcode) bool {
-			return o >= 0x9200 && o < 0x9300 && o.Nibble0() == 0xf
+			return o >= 0x9200 && o < 0x9300 && o.nibble0() == 0xf
 		}},
 	PushReduced: {16,
 		func(o Opcode) bool {
-			return o >= 0x9300 && o < 0x9400 && o.Nibble0() == 0xf
+			return o >= 0x9300 && o < 0x9400 && o.nibble0() == 0xf
 		}},
 	Rcall: {4096,
 		func(o Opcode) bool {
@@ -368,11 +368,11 @@ var mnems = map[Mnemonic]struct {
 		}},
 	Ror: {16,
 		func(o Opcode) bool {
-			return o >= 0x9400 && o < 0x9500 && o.Nibble0() == 7
+			return o >= 0x9400 && o < 0x9500 && o.nibble0() == 7
 		}},
 	RorReduced: {16,
 		func(o Opcode) bool {
-			return o >= 0x9500 && o < 0x9600 && o.Nibble0() == 7
+			return o >= 0x9500 && o < 0x9600 && o.nibble0() == 7
 		}},
 	Sbc: {768,
 		func(o Opcode) bool {
@@ -404,37 +404,37 @@ var mnems = map[Mnemonic]struct {
 		}},
 	Sbrc: {128,
 		func(o Opcode) bool {
-			return o >= 0xfc00 && o < 0xfd00 && o.Nibble0() < 8
+			return o >= 0xfc00 && o < 0xfd00 && o.nibble0() < 8
 		}},
 	SbrcReduced: {128,
 		func(o Opcode) bool {
-			return o >= 0xfd00 && o < 0xfe00 && o.Nibble0() < 8
+			return o >= 0xfd00 && o < 0xfe00 && o.nibble0() < 8
 		}},
 	Sbrs: {128,
 		func(o Opcode) bool {
-			return o >= 0xfe00 && o < 0xff00 && o.Nibble0() < 8
+			return o >= 0xfe00 && o < 0xff00 && o.nibble0() < 8
 		}},
 	SbrsReduced: {128,
 		func(o Opcode) bool {
-			return o >= 0xff00 && o.Nibble0() < 8
+			return o >= 0xff00 && o.nibble0() < 8
 		}},
 	Sleep:    {1, func(o Opcode) bool { return o == 0x9588 }},
 	Spm:      {1, func(o Opcode) bool { return o == 0x95e8 }},
 	SpmXmega: {1, func(o Opcode) bool { return o == 0x95f8 }},
 	StMinimal: {16,
 		func(o Opcode) bool {
-			return o >= 0x8200 && o < 0x8300 && o.Nibble0() == 0
+			return o >= 0x8200 && o < 0x8300 && o.nibble0() == 0
 		}},
 	StMinimalReduced: {16,
 		func(o Opcode) bool {
-			return o >= 0x8300 && o < 0x8400 && o.Nibble0() == 0
+			return o >= 0x8300 && o < 0x8400 && o.nibble0() == 0
 		}},
-	StClassic: {128,
+	St: {128,
 		func(o Opcode) bool {
 			if ((o & 0x1f0) >> 4) >= 16 {
 				return false
 			}
-			on0 := o.Nibble0()
+			on0 := o.nibble0()
 			switch {
 			case o >= 0x8200 && o < 0x8400:
 				return on0 == 8
@@ -445,12 +445,12 @@ var mnems = map[Mnemonic]struct {
 				return false
 			}
 		}},
-	StClassicReduced: {128,
+	StReduced: {128,
 		func(o Opcode) bool {
 			if ((o & 0x1f0) >> 4) < 16 {
 				return false
 			}
-			on0 := o.Nibble0()
+			on0 := o.nibble0()
 			switch {
 			case o >= 0x8200 && o < 0x8400:
 				return on0 == 8
@@ -466,17 +466,17 @@ var mnems = map[Mnemonic]struct {
 			if o < 0x8000 || o >= 0xb000 {
 				return false
 			}
-			if ((o.Nibble2() >> 1) & 0x1) == 0 {
+			if ((o.nibble2() >> 1) & 0x1) == 0 {
 				return false
 			}
-			if o < 0x8400 && (o.Nibble0() == 0 || o.Nibble0() == 8) {
+			if o < 0x8400 && (o.nibble0() == 0 || o.nibble0() == 8) {
 				return false
 			}
 			return true
 		}},
 	Sts: {32,
 		func(o Opcode) bool {
-			return o >= 0x9200 && o < 0x9400 && o.Nibble0() == 0
+			return o >= 0x9200 && o < 0x9400 && o.nibble0() == 0
 		}},
 	Sub: {768,
 		func(o Opcode) bool {
@@ -492,16 +492,16 @@ var mnems = map[Mnemonic]struct {
 		}},
 	Swap: {16,
 		func(o Opcode) bool {
-			return o >= 0x9400 && o < 0x9500 && o.Nibble0() == 2
+			return o >= 0x9400 && o < 0x9500 && o.nibble0() == 2
 		}},
 	SwapReduced: {16,
 		func(o Opcode) bool {
-			return o >= 0x9500 && o < 0x9600 && o.Nibble0() == 2
+			return o >= 0x9500 && o < 0x9600 && o.nibble0() == 2
 		}},
 	Wdr: {1, func(o Opcode) bool { return o == 0x95a8 }},
 	Xch: {32,
 		func(o Opcode) bool {
-			return o >= 0x9200 && o < 0x9400 && o.Nibble0() == 4
+			return o >= 0x9200 && o < 0x9400 && o.nibble0() == 4
 		}},
 }
 
@@ -561,17 +561,27 @@ var amodes = []struct {
 			for A := 0; A < 32; A++ {
 				for b := 0; b < 8; b++ {
 					op := (A << 3) | b
-					am := AddrMode{Addr(A), Addr(b), NoIndex}
+					am := Operands{Src: A, Dst: A, Off: b, Mode: ModeIOBit}
 					testAD(t, mn, op, mask, am)
 				}
 			}
 		}},
-	{0xf800, []Mnemonic{In, InReduced, Out, OutReduced},
+	{0xf800, []Mnemonic{In, InReduced},
 		func(t *testing.T, mask uint16, mn Mnemonic) {
 			for A := 0; A < 64; A++ {
 				for d := 0; d < 32; d++ {
 					op := ((A & 0x30) << 5) | (d << 4) | (A & 0xf)
-					am := AddrMode{Addr(A), Addr(d), NoIndex}
+					am := Operands{Dst: d, Src: A, Mode: ModeIn}
+					testAD(t, mn, op, mask, am)
+				}
+			}
+		}},
+	{0xf800, []Mnemonic{Out, OutReduced},
+		func(t *testing.T, mask uint16, mn Mnemonic) {
+			for A := 0; A < 64; A++ {
+				for d := 0; d < 32; d++ {
+					op := ((A & 0x30) << 5) | (d << 4) | (A & 0xf)
+					am := Operands{Src: d, Dst: A, Mode: ModeOut}
 					testAD(t, mn, op, mask, am)
 				}
 			}
@@ -580,7 +590,7 @@ var amodes = []struct {
 		func(t *testing.T, mask uint16, mn Mnemonic) {
 			for b := 0; b < 8; b++ {
 				op := b << 4
-				am := AddrMode{Addr(b), 0, NoIndex}
+				am := Operands{Src: b, Dst: b, Mode: ModeSBit}
 				testAD(t, mn, op, mask, am)
 			}
 		}},
@@ -590,7 +600,7 @@ var amodes = []struct {
 				for k := -64; k < 64; k++ {
 					kc := uint(k) & 0x7f
 					op := int(kc<<3) | b
-					am := AddrMode{Addr(b), Addr(k), NoIndex}
+					am := Operands{Src: b, Off: k, Mode: ModeBranch}
 					testAD(t, mn, op, mask, am)
 				}
 			}
@@ -603,7 +613,7 @@ var amodes = []struct {
 			for b := 0; b < 8; b++ {
 				for d := 0; d < 32; d++ {
 					op := (d << 4) | b
-					am := AddrMode{Addr(b), Addr(d), NoIndex}
+					am := Operands{Src: d, Dst: d, Off: b, Mode: ModeRegBit}
 					testAD(t, mn, op, mask, am)
 				}
 			}
@@ -613,7 +623,7 @@ var amodes = []struct {
 			for d := 16; d < 24; d++ {
 				for r := 16; r < 24; r++ {
 					op := ((d & 0xf) << 4) | (r & 0xf)
-					am := AddrMode{Addr(d), Addr(r), NoIndex}
+					am := Operands{Dst: d, Src: r, Mode: Mode2Reg3}
 					testAD(t, mn, op, mask, am)
 				}
 			}
@@ -623,7 +633,7 @@ var amodes = []struct {
 			for d := 16; d < 32; d++ {
 				for K := 0; K < 256; K++ {
 					op := ((K & 0xf0) << 4) | ((d & 0xf) << 4) | (K & 0xf)
-					am := AddrMode{Addr(d), Addr(K), NoIndex}
+					am := Operands{Dst: d, Src: K, Mode: ModeRegImm}
 					testAD(t, mn, op, mask, am)
 				}
 			}
@@ -633,7 +643,7 @@ var amodes = []struct {
 			for d := 16; d < 32; d++ {
 				for r := 16; r < 32; r++ {
 					op := ((d & 0xf) << 4) | (r & 0xf)
-					am := AddrMode{Addr(d), Addr(r), NoIndex}
+					am := Operands{Dst: d, Src: r, Mode: Mode2Reg4}
 					testAD(t, mn, op, mask, am)
 				}
 			}
@@ -646,7 +656,7 @@ var amodes = []struct {
 		func(t *testing.T, mask uint16, mn Mnemonic) {
 			for d := 0; d < 32; d++ {
 				op := d << 4
-				am := AddrMode{Addr(d), 0, NoIndex}
+				am := Operands{Dst: d, Src: d, Mode: ModeReg5}
 				testAD(t, mn, op, mask, am)
 			}
 		}},
@@ -654,7 +664,12 @@ var amodes = []struct {
 		func(t *testing.T, mask uint16, mn Mnemonic) {
 			for d := 0; d < 32; d++ {
 				op := d << 4
-				am := AddrMode{Addr(d), 0, NoIndex}
+				var am Operands
+				if mn == Lds {
+					am = Operands{Dst: d, Src: d, Mode: ModeLds}
+				} else {
+					am = Operands{Src: d, Dst: d, Mode: ModeSts}
+				}
 				testAD(t, mn, op, mask, am)
 			}
 		}},
@@ -667,7 +682,7 @@ var amodes = []struct {
 			for d := 0; d < 32; d++ {
 				for r := 0; r < 32; r++ {
 					op := ((r & 0x10) << 5) | (d << 4) | (r & 0xf)
-					am := AddrMode{Addr(d), Addr(r), NoIndex}
+					am := Operands{Dst: d, Src: r, Mode: Mode2Reg5}
 					testAD(t, mn, op, mask, am)
 				}
 			}
@@ -677,7 +692,7 @@ var amodes = []struct {
 			for r := 0; r < 32; r += 2 {
 				for d := 0; d < 32; d += 2 {
 					op := ((d >> 1) << 4) | (r >> 1)
-					am := AddrMode{Addr(d), Addr(r), NoIndex}
+					am := Operands{Dst: d, Src: r, Mode: ModeRegPair}
 					testAD(t, mn, op, mask, am)
 				}
 			}
@@ -687,22 +702,27 @@ var amodes = []struct {
 			for d := 24; d < 32; d += 2 {
 				for K := 0; K < 64; K++ {
 					op := ((K & 0x30) << 2) | (((d - 24) >> 1) << 4) | (K & 0xf)
-					am := AddrMode{Addr(d), Addr(K), NoIndex}
+					am := Operands{Dst: d, Src: K, Mode: ModePairImm}
 					testAD(t, mn, op, mask, am)
 				}
 			}
 		}},
 	{0xfe00, []Mnemonic{Elpm},
 		func(t *testing.T, mask uint16, mn Mnemonic) {
-			testAD(t, Elpm, 0x95d8, 0, AddrMode{0, 0, Z})
+			testAD(t, Elpm, 0x95d8, 0, Operands{})
+		}},
+	{0xfe00, []Mnemonic{ElpmEnhanced},
+		func(t *testing.T, mask uint16, mn Mnemonic) {
+			testAD(t, Elpm, 0x95d8, 0, Operands{})
 			for d := 0; d < 32; d++ {
 				op := (d << 4) | 0x6
-				am := AddrMode{Addr(d), 0, Z}
+				am := Operands{Dst: d, Src: int(Z), Mode: ModeLpmEnh}
 				testAD(t, mn, op, mask, am)
 			}
 			for d := 0; d < 32; d++ {
 				op := (d << 4) | 0x7
-				am := AddrMode{Addr(d), 0, ZPostInc}
+				am := Operands{Dst: d, Src: int(ZPostInc),
+					Mode: ModeLpmEnh}
 				testAD(t, mn, op, mask, am)
 			}
 		}},
@@ -710,7 +730,7 @@ var amodes = []struct {
 		func(t *testing.T, mask uint16, mn Mnemonic) {
 			for K := 0; K < 16; K++ {
 				op := K << 4
-				am := AddrMode{Addr(K), 0, NoIndex}
+				am := Operands{Src: K, Mode: ModeDes}
 				testAD(t, mn, op, mask, am)
 			}
 		}},
@@ -718,7 +738,7 @@ var amodes = []struct {
 		func(t *testing.T, mask uint16, mn Mnemonic) {
 			for k := -2048; k < 2048; k++ {
 				op := int(uint(k) & 0xfff)
-				am := AddrMode{Addr(k), 0, NoIndex}
+				am := Operands{Off: k, Mode: ModePcOff}
 				testAD(t, mn, op, mask, am)
 			}
 		}},
@@ -726,7 +746,7 @@ var amodes = []struct {
 		func(t *testing.T, mask uint16, mn Mnemonic) {
 			for k := 0; k < 64; k++ {
 				op := ((k & 0x3e) << 3) | (k & 0x1)
-				am := AddrMode{Addr(k << 16), 0, 0}
+				am := Operands{Off: k << 16, Mode: ModePc}
 				testAD(t, mn, op, mask, am)
 			}
 		}},
@@ -736,7 +756,14 @@ var amodes = []struct {
 				for q := 0; q < 64; q++ {
 					op := ((q & 0x20) << 8) | ((q & 0x18) << 7) | (q & 0x7)
 					op |= (d << 4) | 0x8
-					am := AddrMode{Addr(d), Addr(q), Y}
+					var am Operands
+					if mn == Ldd {
+						am = Operands{Dst: d, Off: q, Src: int(Y),
+							Mode: ModeLdd}
+					} else {
+						am = Operands{Off: q, Src: d, Dst: int(Y),
+							Mode: ModeStd}
+					}
 					testAD(t, mn, op, mask, am)
 				}
 			}
@@ -744,84 +771,104 @@ var amodes = []struct {
 				for q := 0; q < 64; q++ {
 					op := ((q & 0x20) << 8) | ((q & 0x18) << 7) | (q & 0x7)
 					op |= (d << 4)
-					am := AddrMode{Addr(d), Addr(q), Z}
+					var am Operands
+					if mn == Ldd {
+						am = Operands{Dst: d, Off: q, Src: int(Z),
+							Mode: ModeLdd}
+					} else {
+						am = Operands{Off: q, Src: d, Dst: int(Z),
+							Mode: ModeStd}
+					}
 					testAD(t, mn, op, mask, am)
 				}
 			}
 		}},
 	{0xfe00, []Mnemonic{
-		LdMinimal, LdMinimalReduced, LdClassic, LdClassicReduced,
-		StMinimal, StMinimalReduced, StClassic, StClassicReduced,
+		LdMinimal, LdMinimalReduced, Ld, LdReduced,
 	},
 		func(t *testing.T, mask uint16, mn Mnemonic) {
 			for suff, ireg := range ldstireg {
 				for d := 0; d < 32; d++ {
 					op := (d << 4) | suff
-					am := AddrMode{Addr(d), 0, ireg}
+					am := Operands{Dst: d, Src: int(ireg), Mode: ModeLd}
+					testAD(t, mn, op, mask, am)
+				}
+			}
+		}},
+	{0xfe00, []Mnemonic{
+		StMinimal, StMinimalReduced, St, StReduced,
+	},
+		func(t *testing.T, mask uint16, mn Mnemonic) {
+			for suff, ireg := range ldstireg {
+				for d := 0; d < 32; d++ {
+					op := (d << 4) | suff
+					am := Operands{Src: d, Dst: int(ireg), Mode: ModeSt}
 					testAD(t, mn, op, mask, am)
 				}
 			}
 		}},
 	{0xfe00, []Mnemonic{Lpm},
 		func(t *testing.T, mask uint16, mn Mnemonic) {
-			testAD(t, Lpm, 0x95c8, 0, AddrMode{0, 0, Z})
+			testAD(t, Lpm, 0x95c8, 0, Operands{})
 		}},
 	{0xfe00, []Mnemonic{LpmEnhanced},
 		func(t *testing.T, mask uint16, mn Mnemonic) {
 			for d := 0; d < 32; d++ {
 				op := (d << 4) | 0x4
-				am := AddrMode{Addr(d), 0, Z}
+				am := Operands{Dst: d, Src: int(Z), Mode: ModeLpmEnh}
 				testAD(t, mn, op, mask, am)
 			}
 			for d := 0; d < 32; d++ {
 				op := (d << 4) | 0x5
-				am := AddrMode{Addr(d), 0, ZPostInc}
+				am := Operands{Dst: d, Src: int(ZPostInc),
+					Mode: ModeLpmEnh}
 				testAD(t, mn, op, mask, am)
 			}
 		}},
 	{0x0000, []Mnemonic{Reserved},
 		func(t *testing.T, mask uint16, mn Mnemonic) {
-			testAD(t, Break, 0x9598, 0, AddrMode{})
-			testAD(t, Eicall, 0x9519, 0, AddrMode{})
-			testAD(t, Eijmp, 0x9419, 0, AddrMode{})
-			testAD(t, Icall, 0x9509, 0, AddrMode{})
-			testAD(t, Ijmp, 0x9409, 0, AddrMode{})
-			testAD(t, Nop, 0x0000, 0, AddrMode{})
-			testAD(t, Ret, 0x9508, 0, AddrMode{})
-			testAD(t, Reti, 0x9518, 0, AddrMode{})
-			testAD(t, Sleep, 0x9588, 0, AddrMode{})
-			testAD(t, Wdr, 0x95a8, 0, AddrMode{})
+			testAD(t, Break, 0x9598, 0, Operands{})
+			testAD(t, Eicall, 0x9519, 0, Operands{})
+			testAD(t, Eijmp, 0x9419, 0, Operands{})
+			testAD(t, Icall, 0x9509, 0, Operands{})
+			testAD(t, Ijmp, 0x9409, 0, Operands{})
+			testAD(t, Nop, 0x0000, 0, Operands{})
+			testAD(t, Ret, 0x9508, 0, Operands{})
+			testAD(t, Reti, 0x9518, 0, Operands{})
+			testAD(t, Sleep, 0x9588, 0, Operands{})
+			testAD(t, Wdr, 0x95a8, 0, Operands{})
 		}},
 	{0x0000, []Mnemonic{Spm},
 		func(t *testing.T, mask uint16, mn Mnemonic) {
-			testAD(t, Spm, 0x95e8, 0, AddrMode{})
+			testAD(t, Spm, 0x95e8, 0, Operands{})
 		}},
 	{0x0000, []Mnemonic{SpmXmega},
 		func(t *testing.T, mask uint16, mn Mnemonic) {
-			testAD(t, SpmXmega, 0x95f8, 0, AddrMode{0, 0, ZPostInc})
+			testAD(t, SpmXmega, 0x95f8, 0,
+				Operands{Src: int(ZPostInc), Mode: ModeSpmX})
 		}},
 }
 
-func testAD(t *testing.T, mn Mnemonic, op int, mask uint16, exp AddrMode) {
+func testAD(t *testing.T, mn Mnemonic, op int, mask uint16, exp Operands) {
 	d := NewDecoder(setXmega)
-	mode := OpModes[mn]
+	mode := opModes[mn]
 
-	got := AddrMode{}
-	d.DecodeAddr(&got, mn, Opcode(op), 0)
-	if got != exp {
+	got := Operands{}
+	d.DecodeOperands(&got, mn, Opcode(op), 0)
+	if got.Dst != exp.Dst || got.Src != exp.Src || got.Off != exp.Off {
 		t.Errorf("%s:%s (0 mask) %v not %v", mn, mode, got, exp)
 	}
 	if mask == 0 {
 		return
 	}
 
-	d.DecodeAddr(&got, mn, Opcode(op)|Opcode(mask), 0)
-	if got != exp {
+	d.DecodeOperands(&got, mn, Opcode(op)|Opcode(mask), 0)
+	if got.Dst != exp.Dst || got.Src != exp.Src || got.Off != exp.Off {
 		t.Errorf("%s:%s (1 mask) %v not %v", mn, mode, got, exp)
 	}
 }
 
-func TestDecodeAddr(t *testing.T) {
+func TestDecodeOperands(t *testing.T) {
 	for _, amode := range amodes {
 		for _, mnem := range amode.mn {
 			amode.gen(t, amode.mask, mnem)

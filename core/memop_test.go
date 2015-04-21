@@ -11,50 +11,56 @@ type idxData struct {
 	pre, addr, post int
 }
 
-// Branches with X, Y, and Z as base index registers.
+// Branches with X, Y, and Z as base index registers in Off.
 func brBase(tree testcase.Tree, init, exp testcase.Testable) {
 	initCpu := init.(tCpuDm)
-	initCpu.am.Ireg = instr.X
+	initCpu.ops.Off = int(instr.X)
 	tree.Run("X", initCpu, exp)
-	initCpu.am.Ireg = instr.Y
+	initCpu.ops.Off = int(instr.Y)
 	tree.Run("Y", initCpu, exp)
-	initCpu.am.Ireg = instr.Z
+	initCpu.ops.Off = int(instr.Z)
 	tree.Run("Z", initCpu, exp)
 }
 
-func setupLoad(initCpu tCpuDm, d idxData) (tCpuDm, tCpuDm) {
-	initCpu, expCpu := setupLoadStore(initCpu, d)
-	initCpu.dmem.SetReadData([]int{0xff})
-	expCpu.SetReg(0, 0xff)
-	expCpu.dmem.SetReadData([]int{0xff})
-	expCpu.dmem.ReadData(instr.Addr(d.addr))
-	return initCpu, expCpu
-}
+func setupLoad(ireg instr.IndexReg, initCpu tCpuDm, d idxData) (tCpuDm,
+	tCpuDm) {
 
-func setupStore(initCpu tCpuDm, d idxData) (tCpuDm, tCpuDm) {
-	initCpu.SetReg(0, 0xff)
-	initCpu, expCpu := setupLoadStore(initCpu, d)
-	expCpu.dmem.WriteData(instr.Addr(d.addr), 0xff)
-	return initCpu, expCpu
-}
-
-func setupLoadStore(initCpu tCpuDm, d idxData) (tCpuDm, tCpuDm) {
-	reg := initCpu.am.Ireg.Reg()
+	initCpu.ops.Src = int(ireg)
+	reg := ireg.Reg()
 	expCpu := initCpu
 	expCpu.SetReg(reg, byte(d.post))
 	expCpu.SetReg(reg+1, byte(d.post>>8))
 	initCpu.SetReg(reg, byte(d.pre))
 	initCpu.SetReg(reg+1, byte(d.pre>>8))
+	initCpu.dmem.SetReadData([]int{0xff})
+	expCpu.SetReg(0, 0xff)
+	expCpu.dmem.SetReadData([]int{0xff})
+	expCpu.dmem.ReadData(Addr(d.addr))
+	return initCpu, expCpu
+}
+
+func setupStore(ireg instr.IndexReg, initCpu tCpuDm, d idxData) (tCpuDm,
+	tCpuDm) {
+
+	initCpu.ops.Dst = int(ireg)
+	initCpu.SetReg(0, 0xff)
+	reg := ireg.Reg()
+	expCpu := initCpu
+	expCpu.SetReg(reg, byte(d.post))
+	expCpu.SetReg(reg+1, byte(d.post>>8))
+	initCpu.SetReg(reg, byte(d.pre))
+	initCpu.SetReg(reg+1, byte(d.pre>>8))
+	expCpu.dmem.WriteData(Addr(d.addr), 0xff)
 	return initCpu, expCpu
 }
 
 func TestLdSt(t *testing.T) {
 	// TODO: RAMP
 	var indirectCases = []struct {
-		mode instr.IndexMode
-		data []idxData
+		action instr.IndexAction
+		data   []idxData
 	}{
-		{instr.NoMode, []idxData{
+		{instr.NoAction, []idxData{
 			{0x0800, 0x0800, 0x0800}}},
 		{instr.PostInc, []idxData{
 			{0x0800, 0x0800, 0x0801},
@@ -67,15 +73,15 @@ func TestLdSt(t *testing.T) {
 	run := func(tree testcase.Tree, init, exp testcase.Testable) {
 		for _, indCase := range indirectCases {
 			start := init.(tCpuDm)
-			ireg := start.am.Ireg.WithMode(indCase.mode)
-			start.am.Ireg = ireg
+			ireg := instr.IndexReg(start.ops.Off)
+			ireg = ireg.WithAction(indCase.action)
 			for n, c := range indCase.data {
 				tag := fmt.Sprintf(" %s [%d]", ireg, n)
-				initCpu, expCpu := setupLoad(start, c)
-				ld(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
+				initCpu, expCpu := setupLoad(ireg, start, c)
+				ld(&initCpu.Cpu, &initCpu.ops, &initCpu.dmem)
 				tree.Run("Ld"+tag, initCpu, expCpu)
-				initCpu, expCpu = setupStore(start, c)
-				st(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
+				initCpu, expCpu = setupStore(ireg, start, c)
+				st(&initCpu.Cpu, &initCpu.ops, &initCpu.dmem)
 				tree.Run("St"+tag, initCpu, expCpu)
 			}
 		}
@@ -85,7 +91,7 @@ func TestLdSt(t *testing.T) {
 
 func TestLddStd(t *testing.T) {
 	var dispCases = []struct {
-		disp instr.Addr
+		disp int
 		idxData
 	}{
 		{0x00, idxData{0x0800, 0x0800, 0x0800}},
@@ -96,13 +102,17 @@ func TestLddStd(t *testing.T) {
 	run := func(tree testcase.Tree, init, exp testcase.Testable) {
 		start := init.(tCpuDm)
 		for n, c := range dispCases {
-			start.am.A2 = c.disp
+			ireg := instr.IndexReg(start.ops.Off)
+			start.ops.Dst = 0
+			start.ops.Off = c.disp
 			tag := fmt.Sprintf(" [%d]", n)
-			initCpu, expCpu := setupLoad(start, c.idxData)
-			ldd(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
+			initCpu, expCpu := setupLoad(ireg, start, c.idxData)
+			ldd(&initCpu.Cpu, &initCpu.ops, &initCpu.dmem)
 			tree.Run("Ldd"+tag, initCpu, expCpu)
-			initCpu, expCpu = setupStore(start, c.idxData)
-			std(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
+			start.ops.Src = 0
+			start.ops.Off = c.disp
+			initCpu, expCpu = setupStore(ireg, start, c.idxData)
+			std(&initCpu.Cpu, &initCpu.ops, &initCpu.dmem)
 			tree.Run("Std"+tag, initCpu, expCpu)
 		}
 	}
@@ -123,7 +133,7 @@ func TestPushPop(t *testing.T) {
 		{0xffff, 0x0000, 0x0000, 0x00, 0xff},
 		{0x2000, 0x2001, 0x2001, 0x00, 0xff},
 	}
-	run := func(cases []stackCase, op OpFunc, tag string) testcase.Branch {
+	run := func(cases []stackCase, op opFunc, tag string) testcase.Branch {
 		return func(tree testcase.Tree, init, exp testcase.Testable) {
 			for n, c := range cases {
 				initCpu := init.(tCpuDm)
@@ -133,13 +143,13 @@ func TestPushPop(t *testing.T) {
 				expCpu.sp = c.spPost
 				expCpu.SetReg(0, c.regPost)
 				if tag == "Push" {
-					expCpu.dmem.WriteData(instr.Addr(c.addr), c.regPost)
+					expCpu.dmem.WriteData(Addr(c.addr), c.regPost)
 				} else {
 					initCpu.dmem.SetReadData([]int{0xff})
 					expCpu.dmem.SetReadData([]int{0xff})
-					expCpu.dmem.ReadData(instr.Addr(c.addr))
+					expCpu.dmem.ReadData(Addr(c.addr))
 				}
-				op(&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
+				op(&initCpu.Cpu, &initCpu.ops, &initCpu.dmem)
 				tree.Run(fmt.Sprintf("%s [%d]", tag, n), initCpu, expCpu)
 			}
 		}
@@ -168,19 +178,19 @@ func TestCallRcall(t *testing.T) {
 	run := func(tree testcase.Tree, init, exp testcase.Testable) {
 		for n, c := range cases {
 			initCpu := init.(tCpuDm)
-			initCpu.am.A1 = instr.Addr(c.a1)
+			initCpu.ops.Off = c.a1
 			initCpu.pc = c.pcPre
 			initCpu.sp = c.spPre
 			initCpu.rmask[Eind] = c.rmask << 16
 			expCpu := initCpu
 			expCpu.pc = c.pcPost
 			expCpu.sp = c.spPost
-			expCpu.dmem.WriteData(instr.Addr(c.spPre), byte(c.pcPre))
-			expCpu.dmem.WriteData(instr.Addr(c.spPre-1), byte(c.pcPre>>8))
+			expCpu.dmem.WriteData(Addr(c.spPre), byte(c.pcPre))
+			expCpu.dmem.WriteData(Addr(c.spPre-1), byte(c.pcPre>>8))
 			if c.rmask != 0 {
-				expCpu.dmem.WriteData(instr.Addr(c.spPre-2), byte(c.pcPre>>16))
+				expCpu.dmem.WriteData(Addr(c.spPre-2), byte(c.pcPre>>16))
 			}
-			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
+			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.ops, &initCpu.dmem)
 			tree.Run(fmt.Sprintf("%s [%d]", c.mnem, n), initCpu, expCpu)
 		}
 	}
@@ -210,12 +220,12 @@ func TestIcallEicall(t *testing.T) {
 			expCpu := initCpu
 			expCpu.pc = c.post
 			expCpu.sp = c.spPost
-			expCpu.dmem.WriteData(instr.Addr(c.spPre), byte(c.pcPre))
-			expCpu.dmem.WriteData(instr.Addr(c.spPre-1), byte(c.pcPre>>8))
+			expCpu.dmem.WriteData(Addr(c.spPre), byte(c.pcPre))
+			expCpu.dmem.WriteData(Addr(c.spPre-1), byte(c.pcPre>>8))
 			if c.eind != 0 {
-				expCpu.dmem.WriteData(instr.Addr(c.spPre-2), byte(c.pcPre>>16))
+				expCpu.dmem.WriteData(Addr(c.spPre-2), byte(c.pcPre>>16))
 			}
-			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
+			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.ops, &initCpu.dmem)
 			tree.Run(fmt.Sprintf("%s [%d]", c.mnem, n), initCpu, expCpu)
 		}
 	}
@@ -247,7 +257,7 @@ func TestRetReti(t *testing.T) {
 				expCpu.dmem.SetReadData([]int{
 					c.pc >> 16, c.pc >> 8, c.pc,
 				})
-				expCpu.dmem.ReadData(instr.Addr(c.spPost - 2))
+				expCpu.dmem.ReadData(Addr(c.spPost - 2))
 			} else {
 				initCpu.dmem.SetReadData([]int{
 					c.pc >> 8, c.pc,
@@ -256,12 +266,12 @@ func TestRetReti(t *testing.T) {
 					c.pc >> 8, c.pc,
 				})
 			}
-			expCpu.dmem.ReadData(instr.Addr(c.spPost - 1))
-			expCpu.dmem.ReadData(instr.Addr(c.spPost))
+			expCpu.dmem.ReadData(Addr(c.spPost - 1))
+			expCpu.dmem.ReadData(Addr(c.spPost))
 			if c.mnem == instr.Reti {
 				expCpu.SetFlag(FlagI, true)
 			}
-			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.am, &initCpu.dmem)
+			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.ops, &initCpu.dmem)
 			tree.Run(fmt.Sprintf("%s [%d]", c.mnem, n), initCpu, expCpu)
 		}
 	}
@@ -292,13 +302,13 @@ func TestSBR(t *testing.T) {
 			expCpu.pc = c.pcPost
 			initCpu.dmem.SetReadData([]int{c.op, c.opNext, 0})
 			expCpu.dmem.SetReadData([]int{c.op, c.opNext, 0})
-			expCpu.dmem.ReadProgram(instr.Addr(c.pcPre))
+			expCpu.dmem.ReadProgram(Addr(c.pcPre))
 			skip := (c.mnem == "Sbrs" && c.reg0 != 0) ||
 				(c.mnem == "Sbrc" && c.reg0 == 0)
 			if skip {
-				expCpu.dmem.ReadProgram(instr.Addr(c.pcPre + 1))
+				expCpu.dmem.ReadProgram(Addr(c.pcPre + 1))
 				if c.opNext == 0x940e {
-					expCpu.dmem.ReadProgram(instr.Addr(c.pcPre + 2))
+					expCpu.dmem.ReadProgram(Addr(c.pcPre + 2))
 				}
 			}
 			decoder := instr.NewDecoder(setXmega)
@@ -323,7 +333,7 @@ func TestStepBranch(t *testing.T) {
 			expCpu := initCpu
 			initCpu.dmem.SetReadData([]int{c.op, 0})
 			expCpu.dmem.SetReadData([]int{c.op, 0})
-			expCpu.dmem.ReadProgram(instr.Addr(c.pcPre))
+			expCpu.dmem.ReadProgram(Addr(c.pcPre))
 			expCpu.pc = c.pcPost
 			initCpu.Reset(0, c.pcPre)
 			initCpu.Step(&initCpu.dmem, &decoder)
@@ -344,11 +354,11 @@ func TestIn(t *testing.T) {
 		for n, c := range cases {
 			initCpu := init.(tCpuIm)
 			initCpu.imem.data[c.addr] = byte(c.val)
-			initCpu.am.A1 = instr.Addr(c.port)
-			initCpu.am.A2 = instr.Addr(c.reg)
+			initCpu.ops.Dst = c.reg
+			initCpu.ops.Src = c.port
 			expCpu := initCpu
-			expCpu.SetReg(instr.Addr(c.reg), byte(c.res))
-			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.am, &initCpu.imem)
+			expCpu.SetReg(c.reg, byte(c.res))
+			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.ops, &initCpu.imem)
 			tree.Run(fmt.Sprintf("%s [%d]", c.mnem, n), initCpu, expCpu)
 		}
 	}
@@ -359,23 +369,21 @@ var setXmega = instr.NewSetXmega()
 
 type ldiMem struct{}
 
-func (m *ldiMem) ReadData(addr instr.Addr) byte {
+func (m *ldiMem) ReadData(addr Addr) byte {
 	return 0
 }
 
-func (m *ldiMem) WriteData(addr instr.Addr, val byte) {}
+func (m *ldiMem) WriteData(addr Addr, val byte) {}
 
-func (m *ldiMem) ReadProgram(addr instr.Addr) uint16 {
+func (m *ldiMem) ReadProgram(addr Addr) uint16 {
 	return 0xe000
 }
 
-func BenchmarkStepLdi(b *testing.B) {
-	var xxxam = instr.AddrMode{}
-	var xxxc = Cpu{am: xxxam}
-	var xxxd = instr.NewDecoder(setXmega)
-	var xxxm = ldiMem{}
-
+func BenchmarkLdi(b *testing.B) {
+	cpu := Cpu{}
+	d := instr.NewDecoder(setXmega)
+	mem := ldiMem{}
 	for n := 0; n < b.N; n++ {
-		xxxc.Step(&xxxm, &xxxd)
+		cpu.Step(&mem, &d)
 	}
 }

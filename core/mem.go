@@ -1,9 +1,9 @@
 package cpu
 
-import "github.com/edmccard/avr-sim/instr"
+type Addr int
 
 type Memory interface {
-	ReadData(instr.Addr) byte
-	WriteData(instr.Addr, byte)
-	ReadProgram(instr.Addr) uint16
+	ReadData(Addr) byte
+	WriteData(Addr, byte)
+	ReadProgram(Addr) uint16
 }

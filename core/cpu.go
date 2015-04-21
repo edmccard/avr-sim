@@ -10,7 +10,7 @@ type Cpu struct {
 	ramp  [5]int // D,X,Y,Z,EIND
 	rmask [5]int
 	skip  bool
-	am    instr.AddrMode
+	ops   instr.Operands
 }
 
 type Flag int
@@ -46,8 +46,8 @@ func (c *Cpu) Reset(sp int, pc int) {
 
 func (c *Cpu) Step(mem Memory, d *instr.Decoder) {
 	op, op2, mnem := c.fetch(mem, d)
-	d.DecodeAddr(&c.am, mnem, op, op2)
-	opFuncs[mnem](c, &c.am, mem)
+	d.DecodeOperands(&c.ops, mnem, op, op2)
+	opFuncs[mnem](c, &c.ops, mem)
 	if c.skip {
 		c.skip = false
 		c.fetch(mem, d)
@@ -58,21 +58,21 @@ func (c *Cpu) fetch(mem Memory, d *instr.Decoder) (instr.Opcode, instr.Opcode,
 	instr.Mnemonic) {
 
 	var op2 instr.Opcode
-	op := instr.Opcode(mem.ReadProgram(instr.Addr(c.pc)))
+	op := instr.Opcode(mem.ReadProgram(Addr(c.pc)))
 	c.pcInc(1)
 	mnem, ln := d.DecodeMnem(op)
 	if ln == 2 {
-		op2 = instr.Opcode(mem.ReadProgram(instr.Addr(c.pc)))
+		op2 = instr.Opcode(mem.ReadProgram(Addr(c.pc)))
 		c.pcInc(1)
 	}
 	return op, op2, mnem
 }
 
-func (c *Cpu) GetReg(r instr.Addr) byte {
+func (c *Cpu) GetReg(r int) byte {
 	return byte(c.reg[r])
 }
 
-func (c *Cpu) SetReg(r instr.Addr, val byte) {
+func (c *Cpu) SetReg(r int, val byte) {
 	c.reg[r] = int(val)
 }
 
@@ -135,13 +135,13 @@ func (c *Cpu) setRmask(reg Ramp, mask byte) {
 	c.rmask[reg] = (int(mask) << 16)
 }
 
-func (c *Cpu) indirect(ireg instr.IndexReg, q instr.Addr) instr.Addr {
+func (c *Cpu) indirect(ireg instr.IndexReg, q int) int {
 	base := ireg.Base()
-	mode := ireg.Mode()
+	action := ireg.Action()
 	r := 24 + base*2
 	addr := c.ramp[base] | c.reg[r] | (c.reg[r+1] << 8)
-	switch mode {
-	case instr.NoMode:
+	switch action {
+	case instr.NoAction:
 		addr = (addr + int(q)) & (c.rmask[base] | 0xffff)
 	case instr.PreDec:
 		addr = (addr - 1) & (c.rmask[base] | 0xffff)
@@ -154,7 +154,7 @@ func (c *Cpu) indirect(ireg instr.IndexReg, q instr.Addr) instr.Addr {
 		c.reg[r+1] = (a2 >> 8) & 0xff
 		c.ramp[base] = a2 >> 16
 	}
-	return instr.Addr(addr)
+	return addr
 }
 
 func (c *Cpu) spInc(offset int) {
@@ -165,20 +165,20 @@ func (c *Cpu) pcInc(offset int) {
 	c.pc = (c.pc + offset) & (c.rmask[Eind] | 0xffff)
 }
 
-func nop(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+func nop(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
-func adc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	addition(cpu, am, cpu.flags[FlagC])
+func adc(cpu *Cpu, o *instr.Operands, mem Memory) {
+	addition(cpu, o, cpu.flags[FlagC])
 }
 
-func add(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	addition(cpu, am, false)
+func add(cpu *Cpu, o *instr.Operands, mem Memory) {
+	addition(cpu, o, false)
 }
 
-func addition(cpu *Cpu, am *instr.AddrMode, carry bool) {
-	d := cpu.reg[am.A1]
-	r := cpu.reg[am.A2]
+func addition(cpu *Cpu, o *instr.Operands, carry bool) {
+	d := cpu.reg[o.Dst]
+	r := cpu.reg[o.Src]
 	c := 0
 	if carry {
 		c = 1
@@ -196,12 +196,12 @@ func addition(cpu *Cpu, am *instr.AddrMode, carry bool) {
 	cpu.flags[FlagN] = res >= 0x80
 	cpu.flags[FlagS] = cpu.flags[FlagV] != cpu.flags[FlagN]
 
-	cpu.reg[am.A1] = res
+	cpu.reg[o.Dst] = res
 }
 
-func adiw(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	d := cpu.reg[am.A1] | (cpu.reg[am.A1+1] << 8)
-	k := int(am.A2)
+func adiw(cpu *Cpu, o *instr.Operands, mem Memory) {
+	d := cpu.reg[o.Dst] | (cpu.reg[o.Dst+1] << 8)
+	k := o.Src
 
 	res := (d + k) & 0xffff
 	hr := (res & 0x8000) != 0
@@ -212,28 +212,28 @@ func adiw(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.flags[FlagV] = !hd && hr
 	cpu.flags[FlagS] = cpu.flags[FlagV] != cpu.flags[FlagN]
 
-	cpu.reg[am.A1] = res & 0xff
-	cpu.reg[am.A1+1] = res >> 8
+	cpu.reg[o.Dst] = res & 0xff
+	cpu.reg[o.Dst+1] = res >> 8
 }
 
-func sub(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.reg[am.A1] = subtractionNoCarry(cpu, cpu.reg[am.A1], cpu.reg[am.A2])
+func sub(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.reg[o.Dst] = subtractionNoCarry(cpu, cpu.reg[o.Dst], cpu.reg[o.Src])
 }
 
-func subi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.reg[am.A1] = subtractionNoCarry(cpu, cpu.reg[am.A1], int(am.A2))
+func subi(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.reg[o.Dst] = subtractionNoCarry(cpu, cpu.reg[o.Dst], o.Src)
 }
 
-func cp(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	subtractionNoCarry(cpu, cpu.reg[am.A1], cpu.reg[am.A2])
+func cp(cpu *Cpu, o *instr.Operands, mem Memory) {
+	subtractionNoCarry(cpu, cpu.reg[o.Dst], cpu.reg[o.Src])
 }
 
-func cpi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	subtractionNoCarry(cpu, cpu.reg[am.A1], int(am.A2))
+func cpi(cpu *Cpu, o *instr.Operands, mem Memory) {
+	subtractionNoCarry(cpu, cpu.reg[o.Dst], o.Src)
 }
 
-func neg(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.reg[am.A1] = subtractionNoCarry(cpu, 0, cpu.reg[am.A1])
+func neg(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.reg[o.Dst] = subtractionNoCarry(cpu, 0, cpu.reg[o.Dst])
 }
 
 func subtractionNoCarry(cpu *Cpu, d, r int) int {
@@ -254,18 +254,18 @@ func subtractionNoCarry(cpu *Cpu, d, r int) int {
 	return res
 }
 
-func sbc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.reg[am.A1] = subtractionCarry(cpu, cpu.reg[am.A1], cpu.reg[am.A2],
+func sbc(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.reg[o.Dst] = subtractionCarry(cpu, cpu.reg[o.Dst], cpu.reg[o.Src],
 		cpu.flags[FlagC])
 }
 
-func sbci(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.reg[am.A1] = subtractionCarry(cpu, cpu.reg[am.A1], int(am.A2),
+func sbci(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.reg[o.Dst] = subtractionCarry(cpu, cpu.reg[o.Dst], o.Src,
 		cpu.flags[FlagC])
 }
 
-func cpc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	subtractionCarry(cpu, cpu.reg[am.A1], cpu.reg[am.A2], cpu.flags[FlagC])
+func cpc(cpu *Cpu, o *instr.Operands, mem Memory) {
+	subtractionCarry(cpu, cpu.reg[o.Dst], cpu.reg[o.Src], cpu.flags[FlagC])
 }
 
 func subtractionCarry(cpu *Cpu, d, r int, carry bool) int {
@@ -292,9 +292,9 @@ func subtractionCarry(cpu *Cpu, d, r int, carry bool) int {
 	return res
 }
 
-func sbiw(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	d := cpu.reg[am.A1] | (cpu.reg[am.A1+1] << 8)
-	k := int(am.A2)
+func sbiw(cpu *Cpu, o *instr.Operands, mem Memory) {
+	d := cpu.reg[o.Dst] | (cpu.reg[o.Dst+1] << 8)
+	k := o.Src
 
 	res := (d - k) & 0xffff
 	hr := (res & 0x8000) != 0
@@ -305,16 +305,16 @@ func sbiw(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.flags[FlagV] = hd && !hr
 	cpu.flags[FlagS] = cpu.flags[FlagV] != cpu.flags[FlagN]
 
-	cpu.reg[am.A1] = res & 0xff
-	cpu.reg[am.A1+1] = res >> 8
+	cpu.reg[o.Dst] = res & 0xff
+	cpu.reg[o.Dst+1] = res >> 8
 }
 
-func and(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.reg[am.A1] = boolAnd(cpu, cpu.reg[am.A1], cpu.reg[am.A2])
+func and(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.reg[o.Dst] = boolAnd(cpu, cpu.reg[o.Dst], cpu.reg[o.Src])
 }
 
-func andi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.reg[am.A1] = boolAnd(cpu, cpu.reg[am.A1], int(am.A2))
+func andi(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.reg[o.Dst] = boolAnd(cpu, cpu.reg[o.Dst], o.Src)
 }
 
 func boolAnd(cpu *Cpu, d, r int) int {
@@ -326,12 +326,12 @@ func boolAnd(cpu *Cpu, d, r int) int {
 	return res
 }
 
-func or(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.reg[am.A1] = boolOr(cpu, cpu.reg[am.A1], cpu.reg[am.A2])
+func or(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.reg[o.Dst] = boolOr(cpu, cpu.reg[o.Dst], cpu.reg[o.Src])
 }
 
-func ori(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.reg[am.A1] = boolOr(cpu, cpu.reg[am.A1], int(am.A2))
+func ori(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.reg[o.Dst] = boolOr(cpu, cpu.reg[o.Dst], o.Src)
 }
 
 func boolOr(cpu *Cpu, d, r int) int {
@@ -343,46 +343,25 @@ func boolOr(cpu *Cpu, d, r int) int {
 	return res
 }
 
-func eor(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	res := cpu.reg[am.A1] ^ cpu.reg[am.A2]
+func eor(cpu *Cpu, o *instr.Operands, mem Memory) {
+	res := cpu.reg[o.Dst] ^ cpu.reg[o.Src]
 	cpu.flags[FlagV] = false
 	cpu.flags[FlagN] = res >= 0x80
 	cpu.flags[FlagS] = cpu.flags[FlagN]
 	cpu.flags[FlagZ] = res == 0
-	cpu.reg[am.A1] = res
+	cpu.reg[o.Dst] = res
 }
 
-func mul(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	res := cpu.reg[am.A1] * cpu.reg[am.A2]
+func mul(cpu *Cpu, o *instr.Operands, mem Memory) {
+	res := cpu.reg[o.Dst] * cpu.reg[o.Src]
 	cpu.flags[FlagC] = res >= 0x8000
 	cpu.flags[FlagZ] = res == 0
 	cpu.reg[0] = res & 0xff
 	cpu.reg[1] = res >> 8
 }
 
-func fmul(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	res := cpu.reg[am.A1] * cpu.reg[am.A2]
-	cpu.flags[FlagC] = res >= 0x8000
-	res = (res << 1) & 0xffff
-	cpu.flags[FlagZ] = res == 0
-	cpu.reg[0] = res & 0xff
-	cpu.reg[1] = res >> 8
-}
-
-func muls(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	d := int8(cpu.reg[am.A1])
-	r := int8(cpu.reg[am.A2])
-	res := (int(d) * int(r)) & 0xffff
-	cpu.flags[FlagC] = res >= 0x8000
-	cpu.flags[FlagZ] = res == 0
-	cpu.reg[0] = res & 0xff
-	cpu.reg[1] = res >> 8
-}
-
-func fmuls(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	d := int8(cpu.reg[am.A1])
-	r := int8(cpu.reg[am.A2])
-	res := (int(d) * int(r)) & 0xffff
+func fmul(cpu *Cpu, o *instr.Operands, mem Memory) {
+	res := cpu.reg[o.Dst] * cpu.reg[o.Src]
 	cpu.flags[FlagC] = res >= 0x8000
 	res = (res << 1) & 0xffff
 	cpu.flags[FlagZ] = res == 0
@@ -390,9 +369,9 @@ func fmuls(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.reg[1] = res >> 8
 }
 
-func mulsu(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	d := int8(cpu.reg[am.A1])
-	r := cpu.reg[am.A2]
+func muls(cpu *Cpu, o *instr.Operands, mem Memory) {
+	d := int8(cpu.reg[o.Dst])
+	r := int8(cpu.reg[o.Src])
 	res := (int(d) * int(r)) & 0xffff
 	cpu.flags[FlagC] = res >= 0x8000
 	cpu.flags[FlagZ] = res == 0
@@ -400,9 +379,9 @@ func mulsu(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.reg[1] = res >> 8
 }
 
-func fmulsu(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	d := int8(cpu.reg[am.A1])
-	r := cpu.reg[am.A2]
+func fmuls(cpu *Cpu, o *instr.Operands, mem Memory) {
+	d := int8(cpu.reg[o.Dst])
+	r := int8(cpu.reg[o.Src])
 	res := (int(d) * int(r)) & 0xffff
 	cpu.flags[FlagC] = res >= 0x8000
 	res = (res << 1) & 0xffff
@@ -411,76 +390,97 @@ func fmulsu(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.reg[1] = res >> 8
 }
 
-func mov(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.reg[am.A1] = cpu.reg[am.A2]
+func mulsu(cpu *Cpu, o *instr.Operands, mem Memory) {
+	d := int8(cpu.reg[o.Dst])
+	r := cpu.reg[o.Src]
+	res := (int(d) * int(r)) & 0xffff
+	cpu.flags[FlagC] = res >= 0x8000
+	cpu.flags[FlagZ] = res == 0
+	cpu.reg[0] = res & 0xff
+	cpu.reg[1] = res >> 8
 }
 
-func movw(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.reg[am.A1] = cpu.reg[am.A2]
-	cpu.reg[am.A1+1] = cpu.reg[am.A2+1]
+func fmulsu(cpu *Cpu, o *instr.Operands, mem Memory) {
+	d := int8(cpu.reg[o.Dst])
+	r := cpu.reg[o.Src]
+	res := (int(d) * int(r)) & 0xffff
+	cpu.flags[FlagC] = res >= 0x8000
+	res = (res << 1) & 0xffff
+	cpu.flags[FlagZ] = res == 0
+	cpu.reg[0] = res & 0xff
+	cpu.reg[1] = res >> 8
 }
 
-func ldi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.reg[am.A1] = int(am.A2)
+func mov(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.reg[o.Dst] = cpu.reg[o.Src]
 }
 
-func com(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	res := ^cpu.reg[am.A1] & 0xff
+func movw(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.reg[o.Dst] = cpu.reg[o.Src]
+	cpu.reg[o.Dst+1] = cpu.reg[o.Src+1]
+}
+
+func ldi(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.reg[o.Dst] = o.Src
+}
+
+func com(cpu *Cpu, o *instr.Operands, mem Memory) {
+	res := ^cpu.reg[o.Dst] & 0xff
 	cpu.flags[FlagC] = true
 	cpu.flags[FlagV] = false
 	cpu.flags[FlagZ] = res == 0
 	cpu.flags[FlagN] = res >= 0x80
 	cpu.flags[FlagS] = cpu.flags[FlagN]
-	cpu.reg[am.A1] = res
+	cpu.reg[o.Dst] = res
 }
 
-func swap(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	val := cpu.reg[am.A1]
-	cpu.reg[am.A1] = ((val & 0xf) << 4) | ((val & 0xf0) >> 4)
+func swap(cpu *Cpu, o *instr.Operands, mem Memory) {
+	val := cpu.reg[o.Dst]
+	cpu.reg[o.Dst] = ((val & 0xf) << 4) | ((val & 0xf0) >> 4)
 }
 
-func dec(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	res := (cpu.reg[am.A1] - 1) & 0xff
+func dec(cpu *Cpu, o *instr.Operands, mem Memory) {
+	res := (cpu.reg[o.Dst] - 1) & 0xff
 	cpu.flags[FlagV] = res == 0x7f
 	cpu.flags[FlagN] = res >= 0x80
 	cpu.flags[FlagS] = cpu.flags[FlagV] != cpu.flags[FlagN]
 	cpu.flags[FlagZ] = res == 0
-	cpu.reg[am.A1] = res
+	cpu.reg[o.Dst] = res
 }
 
-func inc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	res := (cpu.reg[am.A1] + 1) & 0xff
+func inc(cpu *Cpu, o *instr.Operands, mem Memory) {
+	res := (cpu.reg[o.Dst] + 1) & 0xff
 	cpu.flags[FlagV] = res == 0x80
 	cpu.flags[FlagN] = res >= 0x80
 	cpu.flags[FlagS] = cpu.flags[FlagV] != cpu.flags[FlagN]
 	cpu.flags[FlagZ] = res == 0
-	cpu.reg[am.A1] = res
+	cpu.reg[o.Dst] = res
 }
 
-func asr(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	val := cpu.reg[am.A1]
+func asr(cpu *Cpu, o *instr.Operands, mem Memory) {
+	val := cpu.reg[o.Dst]
 	res := (val >> 1) | (val & 0x80)
 	cpu.flags[FlagC] = (val & 0x1) != 0
 	cpu.flags[FlagN] = (val & 0x80) != 0
 	cpu.flags[FlagZ] = res == 0
 	cpu.flags[FlagV] = cpu.flags[FlagN] != cpu.flags[FlagC]
 	cpu.flags[FlagS] = cpu.flags[FlagN] != cpu.flags[FlagV]
-	cpu.reg[am.A1] = res
+	cpu.reg[o.Dst] = res
 }
 
-func lsr(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	val := cpu.reg[am.A1]
+func lsr(cpu *Cpu, o *instr.Operands, mem Memory) {
+	val := cpu.reg[o.Dst]
 	res := val >> 1
 	cpu.flags[FlagC] = (val & 0x1) != 0
 	cpu.flags[FlagN] = false
 	cpu.flags[FlagZ] = res == 0
 	cpu.flags[FlagV] = cpu.flags[FlagC]
 	cpu.flags[FlagS] = cpu.flags[FlagV]
-	cpu.reg[am.A1] = res
+	cpu.reg[o.Dst] = res
 }
 
-func ror(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	val := cpu.reg[am.A1]
+func ror(cpu *Cpu, o *instr.Operands, mem Memory) {
+	val := cpu.reg[o.Dst]
 	res := val >> 1
 	if cpu.flags[FlagC] {
 		res |= 0x80
@@ -490,133 +490,133 @@ func ror(cpu *Cpu, am *instr.AddrMode, mem Memory) {
 	cpu.flags[FlagZ] = res == 0
 	cpu.flags[FlagV] = cpu.flags[FlagN] != cpu.flags[FlagC]
 	cpu.flags[FlagS] = cpu.flags[FlagN] != cpu.flags[FlagV]
-	cpu.reg[am.A1] = res
+	cpu.reg[o.Dst] = res
 }
 
-func bset(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.flags[am.A1] = true
+func bset(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.flags[o.Dst] = true
 }
 
-func bclr(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.flags[am.A1] = false
+func bclr(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.flags[o.Src] = false
 }
 
-func bst(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	val := cpu.reg[am.A2]
-	cpu.flags[FlagT] = (val & (1 << uint(am.A1))) != 0
+func bst(cpu *Cpu, o *instr.Operands, mem Memory) {
+	val := cpu.reg[o.Src]
+	cpu.flags[FlagT] = (val & (1 << uint(o.Off))) != 0
 }
 
-func bld(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	bit := uint(am.A1)
+func bld(cpu *Cpu, o *instr.Operands, mem Memory) {
+	bit := uint(o.Off)
 	if cpu.flags[FlagT] {
-		cpu.reg[am.A2] |= (1 << bit)
+		cpu.reg[o.Dst] |= (1 << bit)
 	} else {
-		cpu.reg[am.A2] &= ^(1 << bit) & 0xff
+		cpu.reg[o.Dst] &= ^(1 << bit) & 0xff
 	}
 }
 
-func ld(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	addr := cpu.indirect(am.Ireg, 0)
-	cpu.reg[am.A1] = int(mem.ReadData(addr))
+func ld(cpu *Cpu, o *instr.Operands, mem Memory) {
+	addr := Addr(cpu.indirect(instr.IndexReg(o.Src), 0))
+	cpu.reg[o.Dst] = int(mem.ReadData(addr))
 }
 
-func st(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	addr := cpu.indirect(am.Ireg, 0)
-	mem.WriteData(addr, byte(cpu.reg[am.A1]))
+func st(cpu *Cpu, o *instr.Operands, mem Memory) {
+	addr := Addr(cpu.indirect(instr.IndexReg(o.Dst), 0))
+	mem.WriteData(addr, byte(cpu.reg[o.Src]))
 }
 
-func ldd(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	addr := cpu.indirect(am.Ireg, am.A2)
-	cpu.reg[am.A1] = int(mem.ReadData(addr))
+func ldd(cpu *Cpu, o *instr.Operands, mem Memory) {
+	addr := Addr(cpu.indirect(instr.IndexReg(o.Src), o.Off))
+	cpu.reg[o.Dst] = int(mem.ReadData(addr))
 }
 
-func std(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	addr := cpu.indirect(am.Ireg, am.A2)
-	mem.WriteData(addr, byte(cpu.reg[am.A1]))
+func std(cpu *Cpu, o *instr.Operands, mem Memory) {
+	addr := Addr(cpu.indirect(instr.IndexReg(o.Dst), o.Off))
+	mem.WriteData(addr, byte(cpu.reg[o.Src]))
 }
 
-func lds(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.reg[am.A1] = int(mem.ReadData(instr.Addr(cpu.ramp[RampD]) | am.A2))
+func lds(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.reg[o.Dst] = int(mem.ReadData(Addr(cpu.ramp[RampD] | o.Off)))
 }
 
-func sts(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	mem.WriteData(instr.Addr(cpu.ramp[RampD])|am.A2, byte(cpu.reg[am.A1]))
+func sts(cpu *Cpu, o *instr.Operands, mem Memory) {
+	mem.WriteData(Addr(cpu.ramp[RampD]|o.Off), byte(cpu.reg[o.Src]))
 }
 
-func push(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	mem.WriteData(instr.Addr(cpu.sp), byte(cpu.reg[am.A1]))
+func push(cpu *Cpu, o *instr.Operands, mem Memory) {
+	mem.WriteData(Addr(cpu.sp), byte(cpu.reg[o.Src]))
 	cpu.spInc(-1)
 }
 
-func pop(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+func pop(cpu *Cpu, o *instr.Operands, mem Memory) {
 	cpu.spInc(1)
-	cpu.reg[am.A1] = int(mem.ReadData(instr.Addr(cpu.sp)))
+	cpu.reg[o.Dst] = int(mem.ReadData(Addr(cpu.sp)))
 }
 
-func brbs(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	if cpu.flags[am.A1] {
-		cpu.pcInc(int(am.A2))
+func brbs(cpu *Cpu, o *instr.Operands, mem Memory) {
+	if cpu.flags[o.Src] {
+		cpu.pcInc(o.Off)
 	}
 }
 
-func brbc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	if !cpu.flags[am.A1] {
-		cpu.pcInc(int(am.A2))
+func brbc(cpu *Cpu, o *instr.Operands, mem Memory) {
+	if !cpu.flags[o.Src] {
+		cpu.pcInc(o.Off)
 	}
 }
 
-func eijmp(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+func eijmp(cpu *Cpu, o *instr.Operands, mem Memory) {
 	cpu.pc = cpu.reg[30] | (cpu.reg[31] << 8) | cpu.ramp[Eind]
 }
 
-func ijmp(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+func ijmp(cpu *Cpu, o *instr.Operands, mem Memory) {
 	cpu.pc = cpu.reg[30] | (cpu.reg[31] << 8)
 }
 
-func jmp(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.pc = int(am.A1) & (cpu.rmask[Eind] | 0xffff)
+func jmp(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.pc = o.Off & (cpu.rmask[Eind] | 0xffff)
 }
 
-func rjmp(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.pcInc(int(am.A1))
+func rjmp(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.pcInc(o.Off)
 }
 
-func call(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+func call(cpu *Cpu, o *instr.Operands, mem Memory) {
 	pushPC(cpu, mem)
-	jmp(cpu, am, mem)
+	jmp(cpu, o, mem)
 }
 
-func eicall(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+func eicall(cpu *Cpu, o *instr.Operands, mem Memory) {
 	pushPC(cpu, mem)
-	eijmp(cpu, am, mem)
+	eijmp(cpu, o, mem)
 }
 
-func icall(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+func icall(cpu *Cpu, o *instr.Operands, mem Memory) {
 	pushPC(cpu, mem)
-	ijmp(cpu, am, mem)
+	ijmp(cpu, o, mem)
 }
 
-func rcall(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+func rcall(cpu *Cpu, o *instr.Operands, mem Memory) {
 	pushPC(cpu, mem)
-	rjmp(cpu, am, mem)
+	rjmp(cpu, o, mem)
 }
 
 func pushPC(cpu *Cpu, mem Memory) {
-	mem.WriteData(instr.Addr(cpu.sp), byte(cpu.pc))
+	mem.WriteData(Addr(cpu.sp), byte(cpu.pc))
 	cpu.spInc(-1)
-	mem.WriteData(instr.Addr(cpu.sp), byte(cpu.pc>>8))
+	mem.WriteData(Addr(cpu.sp), byte(cpu.pc>>8))
 	cpu.spInc(-1)
 	if cpu.rmask[Eind] != 0 {
-		mem.WriteData(instr.Addr(cpu.sp), byte(cpu.pc>>16))
+		mem.WriteData(Addr(cpu.sp), byte(cpu.pc>>16))
 		cpu.spInc(-1)
 	}
 }
 
-func ret(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+func ret(cpu *Cpu, o *instr.Operands, mem Memory) {
 	popPC(cpu, mem)
 }
 
-func reti(cpu *Cpu, am *instr.AddrMode, mem Memory) {
+func reti(cpu *Cpu, o *instr.Operands, mem Memory) {
 	popPC(cpu, mem)
 	cpu.flags[FlagI] = true
 }
@@ -625,95 +625,95 @@ func popPC(cpu *Cpu, mem Memory) {
 	cpu.pc = 0
 	if cpu.rmask[Eind] != 0 {
 		cpu.spInc(1)
-		cpu.pc |= (int(mem.ReadData(instr.Addr(cpu.sp))) << 16)
+		cpu.pc |= (int(mem.ReadData(Addr(cpu.sp))) << 16)
 	}
 	cpu.spInc(1)
-	cpu.pc |= (int(mem.ReadData(instr.Addr(cpu.sp))) << 8)
+	cpu.pc |= (int(mem.ReadData(Addr(cpu.sp))) << 8)
 	cpu.spInc(1)
-	cpu.pc |= int(mem.ReadData(instr.Addr(cpu.sp)))
+	cpu.pc |= int(mem.ReadData(Addr(cpu.sp)))
 }
 
-func lac(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	mask := byte(cpu.reg[am.A1])
-	addr := cpu.indirect(instr.Z, 0)
-	cpu.reg[am.A1] = int(mem.ReadData(addr))
-	mem.WriteData(addr, byte(cpu.reg[am.A1]) & ^mask)
+func lac(cpu *Cpu, o *instr.Operands, mem Memory) {
+	mask := byte(cpu.reg[o.Dst])
+	addr := Addr(cpu.indirect(instr.Z, 0))
+	cpu.reg[o.Dst] = int(mem.ReadData(addr))
+	mem.WriteData(addr, byte(cpu.reg[o.Dst]) & ^mask)
 }
 
-func las(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	mask := byte(cpu.reg[am.A1])
-	addr := cpu.indirect(instr.Z, 0)
-	cpu.reg[am.A1] = int(mem.ReadData(addr))
-	mem.WriteData(addr, byte(cpu.reg[am.A1])|mask)
+func las(cpu *Cpu, o *instr.Operands, mem Memory) {
+	mask := byte(cpu.reg[o.Dst])
+	addr := Addr(cpu.indirect(instr.Z, 0))
+	cpu.reg[o.Dst] = int(mem.ReadData(addr))
+	mem.WriteData(addr, byte(cpu.reg[o.Dst])|mask)
 }
 
-func lat(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	mask := byte(cpu.reg[am.A1])
-	addr := cpu.indirect(instr.Z, 0)
-	cpu.reg[am.A1] = int(mem.ReadData(addr))
-	mem.WriteData(addr, byte(cpu.reg[am.A1])^mask)
+func lat(cpu *Cpu, o *instr.Operands, mem Memory) {
+	mask := byte(cpu.reg[o.Dst])
+	addr := Addr(cpu.indirect(instr.Z, 0))
+	cpu.reg[o.Dst] = int(mem.ReadData(addr))
+	mem.WriteData(addr, byte(cpu.reg[o.Dst])^mask)
 }
 
-func xch(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	tmp := byte(cpu.reg[am.A1])
-	addr := cpu.indirect(instr.Z, 0)
-	cpu.reg[am.A1] = int(mem.ReadData(addr))
+func xch(cpu *Cpu, o *instr.Operands, mem Memory) {
+	tmp := byte(cpu.reg[o.Dst])
+	addr := Addr(cpu.indirect(instr.Z, 0))
+	cpu.reg[o.Dst] = int(mem.ReadData(addr))
 	mem.WriteData(addr, tmp)
 }
 
-func sbrc(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	if (cpu.reg[am.A2] & (1 << uint(am.A1))) == 0 {
+func sbrc(cpu *Cpu, o *instr.Operands, mem Memory) {
+	if (cpu.reg[o.Src] & (1 << uint(o.Off))) == 0 {
 		cpu.skip = true
 	}
 }
 
-func sbrs(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	if (cpu.reg[am.A2] & (1 << uint(am.A1))) != 0 {
+func sbrs(cpu *Cpu, o *instr.Operands, mem Memory) {
+	if (cpu.reg[o.Src] & (1 << uint(o.Off))) != 0 {
 		cpu.skip = true
 	}
 }
 
-func cpse(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	if cpu.reg[am.A1] == cpu.reg[am.A2] {
+func cpse(cpu *Cpu, o *instr.Operands, mem Memory) {
+	if cpu.reg[o.Dst] == cpu.reg[o.Src] {
 		cpu.skip = true
 	}
 }
 
-func sbic(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	if (mem.ReadData(am.A1+0x20) & (1 << uint(am.A2))) == 0 {
+func sbic(cpu *Cpu, o *instr.Operands, mem Memory) {
+	if (mem.ReadData(Addr(o.Src+0x20)) & (1 << uint(o.Off))) == 0 {
 		cpu.skip = true
 	}
 }
 
-func sbis(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	if (mem.ReadData(am.A1+0x20) & (1 << uint(am.A2))) != 0 {
+func sbis(cpu *Cpu, o *instr.Operands, mem Memory) {
+	if (mem.ReadData(Addr(o.Src+0x20)) & (1 << uint(o.Off))) != 0 {
 		cpu.skip = true
 	}
 }
 
-func in(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	cpu.reg[am.A2] = int(mem.ReadData(am.A1 + 0x20))
+func in(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.reg[o.Dst] = int(mem.ReadData(Addr(o.Src + 0x20)))
 }
 
-func out(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	mem.WriteData(am.A1+0x20, byte(cpu.reg[am.A2]))
+func out(cpu *Cpu, o *instr.Operands, mem Memory) {
+	mem.WriteData(Addr(o.Dst+0x20), byte(cpu.reg[o.Src]))
 }
 
-func cbi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	addr := am.A1 + 0x20
-	val := mem.ReadData(addr) & ^(1 << uint(am.A2))
+func cbi(cpu *Cpu, o *instr.Operands, mem Memory) {
+	addr := Addr(o.Dst + 0x20)
+	val := mem.ReadData(addr) & ^(1 << uint(o.Off))
 	mem.WriteData(addr, val)
 }
 
-func sbi(cpu *Cpu, am *instr.AddrMode, mem Memory) {
-	addr := am.A1 + 0x20
-	val := mem.ReadData(addr) | ^(1 << uint(am.A2))
+func sbi(cpu *Cpu, o *instr.Operands, mem Memory) {
+	addr := Addr(o.Dst + 0x20)
+	val := mem.ReadData(addr) | ^(1 << uint(o.Off))
 	mem.WriteData(addr, val)
 }
 
-type OpFunc func(*Cpu, *instr.AddrMode, Memory)
+type opFunc func(*Cpu, *instr.Operands, Memory)
 
-var opFuncs = [...]OpFunc{
+var opFuncs = [...]opFunc{
 	nop,    // Reserved
 	adc,    // Adc
 	adc,    // AdcReduced
