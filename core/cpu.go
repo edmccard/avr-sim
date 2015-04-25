@@ -711,6 +711,35 @@ func sbi(cpu *Cpu, o *instr.Operands, mem Memory) {
 	mem.WriteData(addr, val)
 }
 
+func lpm(cpu *Cpu, o *instr.Operands, mem Memory) {
+	o.Src = int(instr.Z)
+	o.Dst = 0
+	loadProgMem(cpu, o, mem, 0)
+}
+
+func lpme(cpu *Cpu, o *instr.Operands, mem Memory) {
+	loadProgMem(cpu, o, mem, 0)
+}
+
+func elpm(cpu *Cpu, o *instr.Operands, mem Memory) {
+	o.Src = int(instr.Z)
+	o.Dst = 0
+	loadProgMem(cpu, o, mem, cpu.rmask[RampZ])
+}
+
+func elpme(cpu *Cpu, o *instr.Operands, mem Memory) {
+	loadProgMem(cpu, o, mem, cpu.rmask[RampZ])
+}
+
+func loadProgMem(cpu *Cpu, o *instr.Operands, mem Memory, zmask int) {
+	tmp := cpu.rmask[RampZ]
+	cpu.rmask[RampZ] = zmask
+	addr := Addr(cpu.indirect(instr.IndexReg(o.Src), 0))
+	val := mem.ReadProgram(addr >> 1)
+	cpu.reg[o.Dst] = int(val>>((uint(addr)&0x1)*8)) & 0xff
+	cpu.rmask[RampZ] = tmp
+}
+
 type opFunc func(*Cpu, *instr.Operands, Memory)
 
 var opFuncs = [...]opFunc{
@@ -750,8 +779,8 @@ var opFuncs = [...]opFunc{
 	nop,    // Des ****
 	eicall, // Eicall
 	eijmp,  // Eijmp
-	nop,    // Elpm ****
-	nop,    // ElpmEnhanced ****
+	elpm,   // Elpm ****
+	elpme,  // ElpmEnhanced ****
 	eor,    // Eor
 	eor,    // EorReduced
 	fmul,   // Fmul
@@ -775,8 +804,8 @@ var opFuncs = [...]opFunc{
 	ldi,    // Ldi
 	lds,    // Lds
 	nop,    // Lds16 ****
-	nop,    // Lpm ****
-	nop,    // LpmEnhanced ****
+	lpm,    // Lpm ****
+	lpme,   // LpmEnhanced ****
 	lsr,    // Lsr
 	lsr,    // LsrReduced
 	mov,    // Mov

@@ -387,3 +387,60 @@ func BenchmarkLdi(b *testing.B) {
 		cpu.Step(&mem, &d)
 	}
 }
+
+type tLPMmem struct{}
+
+func (m *tLPMmem) ReadData(addr Addr) byte {
+	return 0
+}
+
+func (m *tLPMmem) WriteData(addr Addr, val byte) {}
+
+func (m *tLPMmem) ReadProgram(addr Addr) uint16 {
+	return 0x95c8
+}
+
+type tLPMCpu struct {
+	tCpu
+	mem tLPMmem
+}
+
+func (m tLPMCpu) Equals(other testcase.Testable) bool {
+	o := other.(tLPMCpu)
+	return m.tCpu.Equals(o.tCpu)
+}
+
+func (m tLPMCpu) Diff(other testcase.Testable) interface{} {
+	o := other.(tLPMCpu)
+	return m.tCpu.Diff(o.tCpu)
+}
+
+func TestLpm(t *testing.T) {
+	runlpm := func(tree testcase.Tree, init, exp testcase.Testable) {
+		initCpu := init.(tLPMCpu)
+		expCpu := initCpu
+		expCpu.SetReg(0, 0xc8)
+		lpm(&initCpu.Cpu, &instr.Operands{}, &initCpu.mem)
+		tree.Run("LPM", initCpu, expCpu)
+	}
+	runlpmz := func(tree testcase.Tree, init, exp testcase.Testable) {
+		initCpu := init.(tLPMCpu)
+		initCpu.SetReg(30, 1)
+		expCpu := initCpu
+		expCpu.SetReg(0, 0x95)
+		lpm(&initCpu.Cpu, &instr.Operands{}, &initCpu.mem)
+		tree.Run("LPM z", initCpu, expCpu)
+	}
+	runlpmzplus := func(tree testcase.Tree, init, exp testcase.Testable) {
+		initCpu := init.(tLPMCpu)
+		expCpu := initCpu
+		expCpu.SetReg(0, 0xc8)
+		expCpu.SetReg(30, 1)
+		lpme(&initCpu.Cpu, &instr.Operands{Src: int(instr.ZPostInc)},
+			&initCpu.mem)
+		tree.Run("LPM z+", initCpu, expCpu)
+	}
+	testcase.NewTree(t, "LPM", runlpm).Start(tLPMCpu{})
+	testcase.NewTree(t, "LPM", runlpmz).Start(tLPMCpu{})
+	testcase.NewTree(t, "LPM", runlpmzplus).Start(tLPMCpu{})
+}
