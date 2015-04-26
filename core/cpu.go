@@ -1,4 +1,4 @@
-package cpu
+package core
 
 import "github.com/edmccard/avr-sim/instr"
 
@@ -779,8 +779,8 @@ var opFuncs = [...]opFunc{
 	nop,    // Des ****
 	eicall, // Eicall
 	eijmp,  // Eijmp
-	elpm,   // Elpm ****
-	elpme,  // ElpmEnhanced ****
+	elpm,   // Elpm
+	elpme,  // ElpmEnhanced
 	eor,    // Eor
 	eor,    // EorReduced
 	fmul,   // Fmul
@@ -804,8 +804,8 @@ var opFuncs = [...]opFunc{
 	ldi,    // Ldi
 	lds,    // Lds
 	nop,    // Lds16 ****
-	lpm,    // Lpm ****
-	lpme,   // LpmEnhanced ****
+	lpm,    // Lpm
+	lpme,   // LpmEnhanced
 	lsr,    // Lsr
 	lsr,    // LsrReduced
 	mov,    // Mov

@@ -1,4 +1,4 @@
-package cpu
+package core
 
 type Addr int
 
