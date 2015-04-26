@@ -65,6 +65,7 @@ const (
 	Mode2Reg3            // Mulsu r<Dst[16,23]>, r<Src[16,23]>
 	Mode2Reg4            // Muls r<Dst[16,31]>, r<Src[16,31]>
 	Mode2Reg5            // Add r<Dst[0,31]>, r<Src[0,31]>
+	ModeAtomic           // Lac Z, <Dst[0,31]>
 	ModeBranch           // Brbs <Src[0,7>, pc+1+<Off[-64,63]>
 	ModeDes              // Des <Src[0,15]>
 	ModeLpmEnh           // Lpm <Dst[0,31]>, <Src[IndexReg]>
@@ -91,10 +92,10 @@ const (
 )
 
 var decoders = []operandDecoder{
-	decodeNone, decode2Reg3, decode2Reg4, decode2Reg5, decodeBranch,
-	decodeDes, decodeLpmEnh, decodeIn, decodeIOBit, decodeLd,
-	decodeLdd, decodeLdsSts, decodeLdsSts16, decodeOut, decodePc,
-	decodePcOff, decodeReg5, decodeRegBit, decodeRegImm,
+	decodeNone, decode2Reg3, decode2Reg4, decode2Reg5, decodeAtomic,
+	decodeBranch, decodeDes, decodeLpmEnh, decodeIn, decodeIOBit,
+	decodeLd, decodeLdd, decodeLdsSts, decodeLdsSts16, decodeOut,
+	decodePc, decodePcOff, decodeReg5, decodeRegBit, decodeRegImm,
 	decodeRegPair, decodePairImm, decodeSBit, decodeSt, decodeStd,
 	decodeLdsSts, decodeLdsSts16, decodeSpm,
 }
@@ -296,6 +297,14 @@ func decodeReg5(o *Operands, op1, op2 Opcode) {
 	d := (int(op1) & 0x1f0) >> 4
 	o.Dst = d
 	o.Src = d
+}
+
+// decodeAtomic returns Operands{Dst:d, Src:Z} extracted from
+// _______ddddd____.
+func decodeAtomic(o *Operands, op1, op2 Opcode) {
+	d := (int(op1) & 0x1f0) >> 4
+	o.Dst = d
+	o.Src = int(Z)
 }
 
 // decodeLdsSts returns Operands{Dst:d, Src:d, Off:k} extracted from
