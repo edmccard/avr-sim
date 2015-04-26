@@ -147,12 +147,12 @@ func (c *Cpu) indirect(ireg instr.IndexReg, q int) int {
 		addr = (addr - 1) & (c.rmask[base] | 0xffff)
 		c.reg[r] = addr & 0xff
 		c.reg[r+1] = (addr >> 8) & 0xff
-		c.ramp[base] = addr >> 16
+		c.ramp[base] = addr & c.rmask[base]
 	case instr.PostInc:
 		a2 := (addr + 1) & (c.rmask[base] | 0xffff)
 		c.reg[r] = a2 & 0xff
 		c.reg[r+1] = (a2 >> 8) & 0xff
-		c.ramp[base] = a2 >> 16
+		c.ramp[base] = a2 & c.rmask[base]
 	}
 	return addr
 }
