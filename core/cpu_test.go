@@ -145,6 +145,10 @@ func (tdm *tDataMem) ReadProgram(addr Addr) uint16 {
 	return val
 }
 
+func (tdm *tDataMem) LoadProgram(addr Addr, lohi uint) byte {
+	return 0
+}
+
 func (this *tDataMem) equals(that *tDataMem) bool {
 	return this.readAttempts == that.readAttempts &&
 		this.writeAttempts == that.writeAttempts
@@ -217,6 +221,10 @@ func (im *tIoMem) WriteData(addr Addr, val byte) {
 }
 
 func (im *tIoMem) ReadProgram(addr Addr) uint16 {
+	return 0
+}
+
+func (im *tIoMem) LoadProgram(addr Addr, lohi uint) byte {
 	return 0
 }
 
