@@ -736,7 +736,7 @@ func loadProgMem(cpu *Cpu, o *instr.Operands, mem Memory, zmask int) {
 	tmpRamp := cpu.ramp[RampZ]
 	cpu.rmask[RampZ] = zmask
 	addr := Addr(cpu.indirect(instr.IndexReg(o.Src), 0))
-	cpu.reg[o.Dst] = int(mem.LoadProgram(addr >> 1, uint(addr)&0x1))
+	cpu.reg[o.Dst] = int(mem.LoadProgram(addr>>1, uint(addr)&0x1))
 	// cpu.reg[o.Dst] = int(val>>((uint(addr)&0x1)*8)) & 0xff
 	cpu.rmask[RampZ] = tmpMask
 	cpu.ramp[RampZ] = tmpRamp
