@@ -732,12 +732,14 @@ func elpme(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func loadProgMem(cpu *Cpu, o *instr.Operands, mem Memory, zmask int) {
-	tmp := cpu.rmask[RampZ]
+	tmpMask := cpu.rmask[RampZ]
+	tmpRamp := cpu.ramp[RampZ]
 	cpu.rmask[RampZ] = zmask
 	addr := Addr(cpu.indirect(instr.IndexReg(o.Src), 0))
-	val := mem.ReadProgram(addr >> 1)
-	cpu.reg[o.Dst] = int(val>>((uint(addr)&0x1)*8)) & 0xff
-	cpu.rmask[RampZ] = tmp
+	cpu.reg[o.Dst] = int(mem.LoadProgram(addr >> 1, uint(addr)&0x1))
+	// cpu.reg[o.Dst] = int(val>>((uint(addr)&0x1)*8)) & 0xff
+	cpu.rmask[RampZ] = tmpMask
+	cpu.ramp[RampZ] = tmpRamp
 }
 
 type opFunc func(*Cpu, *instr.Operands, Memory)
