@@ -379,7 +379,7 @@ func (m *ldiMem) ReadProgram(addr Addr) uint16 {
 	return 0xe000
 }
 
-func (m *ldiMem) LoadProgram(addr Addr, lohi uint) byte {
+func (m *ldiMem) LoadProgram(addr Addr) byte {
 	return 0
 }
 
@@ -404,7 +404,7 @@ func (m *tLPMmem) ReadProgram(addr Addr) uint16 {
 	return 0x95c8
 }
 
-func (m *tLPMmem) LoadProgram(addr Addr, lohi uint) byte {
+func (m *tLPMmem) LoadProgram(addr Addr) byte {
 	return 0
 }
 

@@ -145,7 +145,7 @@ func (tdm *tDataMem) ReadProgram(addr Addr) uint16 {
 	return val
 }
 
-func (tdm *tDataMem) LoadProgram(addr Addr, lohi uint) byte {
+func (tdm *tDataMem) LoadProgram(addr Addr) byte {
 	return 0
 }
 
@@ -224,7 +224,7 @@ func (im *tIoMem) ReadProgram(addr Addr) uint16 {
 	return 0
 }
 
-func (im *tIoMem) LoadProgram(addr Addr, lohi uint) byte {
+func (im *tIoMem) LoadProgram(addr Addr) byte {
 	return 0
 }
 
