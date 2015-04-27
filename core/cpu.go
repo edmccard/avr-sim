@@ -714,32 +714,37 @@ func sbi(cpu *Cpu, o *instr.Operands, mem Memory) {
 func lpm(cpu *Cpu, o *instr.Operands, mem Memory) {
 	o.Src = int(instr.Z)
 	o.Dst = 0
-	loadProgMem(cpu, o, mem, 0)
+	loadProgMem(cpu, o, mem, true)
 }
 
 func lpme(cpu *Cpu, o *instr.Operands, mem Memory) {
-	loadProgMem(cpu, o, mem, 0)
+	loadProgMem(cpu, o, mem, true)
 }
 
 func elpm(cpu *Cpu, o *instr.Operands, mem Memory) {
 	o.Src = int(instr.Z)
 	o.Dst = 0
-	loadProgMem(cpu, o, mem, cpu.rmask[RampZ])
+	loadProgMem(cpu, o, mem, false)
 }
 
 func elpme(cpu *Cpu, o *instr.Operands, mem Memory) {
-	loadProgMem(cpu, o, mem, cpu.rmask[RampZ])
+	loadProgMem(cpu, o, mem, false)
 }
 
-func loadProgMem(cpu *Cpu, o *instr.Operands, mem Memory, zmask int) {
-	tmpMask := cpu.rmask[RampZ]
-	tmpRamp := cpu.ramp[RampZ]
-	cpu.rmask[RampZ] = zmask
+func loadProgMem(cpu *Cpu, o *instr.Operands, mem Memory, noramp bool) {
+	var tmpMask, tmpRamp int
+	if noramp {
+		tmpMask = cpu.rmask[RampZ]
+		tmpRamp = cpu.ramp[RampZ]
+		cpu.rmask[RampZ] = 0
+	}
 	addr := Addr(cpu.indirect(instr.IndexReg(o.Src), 0))
 	cpu.reg[o.Dst] = int(mem.LoadProgram(addr>>1, uint(addr)&0x1))
 	// cpu.reg[o.Dst] = int(val>>((uint(addr)&0x1)*8)) & 0xff
-	cpu.rmask[RampZ] = tmpMask
-	cpu.ramp[RampZ] = tmpRamp
+	if noramp {
+		cpu.rmask[RampZ] = tmpMask
+		cpu.ramp[RampZ] = tmpRamp
+	}
 }
 
 type opFunc func(*Cpu, *instr.Operands, Memory)
