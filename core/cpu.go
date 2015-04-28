@@ -707,7 +707,7 @@ func cbi(cpu *Cpu, o *instr.Operands, mem Memory) {
 
 func sbi(cpu *Cpu, o *instr.Operands, mem Memory) {
 	addr := Addr(o.Dst + 0x20)
-	val := mem.ReadData(addr) | ^(1 << uint(o.Off))
+	val := mem.ReadData(addr) | (1 << uint(o.Off))
 	mem.WriteData(addr, val)
 }
 
@@ -770,7 +770,7 @@ var opFuncs = [...]opFunc{
 	bst,    // Bst
 	bst,    // BstReduced
 	call,   // Call
-	cpi,    // Cbi
+	cbi,    // Cbi
 	com,    // Com
 	com,    // ComReduced
 	cp,     // Cp
