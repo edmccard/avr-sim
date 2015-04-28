@@ -511,53 +511,6 @@ func brBitOff(tree testcase.Tree, init, exp testcase.Testable) {
 	}
 }
 
-func TestBranch(t *testing.T) {
-	// Branches with flag[bit] set and cleared, with bit taken
-	// from the initial address mode.
-	brBitFlag := func(tree testcase.Tree, init, exp testcase.Testable) {
-		initTc := init.(tCpu)
-		bit := Flag(initTc.ops.Src)
-		initTc.SetFlag(bit, true)
-		tree.Run(fmt.Sprintf("%s1", bit), initTc, exp)
-		initTc.SetFlag(bit, false)
-		tree.Run(fmt.Sprintf("%s0", bit), initTc, exp)
-	}
-
-	// Branches with positve and negative offset.
-	// TODO: Nest with initial pc such that
-	//       pc+offset doesn't/does wrap.
-	brOffset := func(tree testcase.Tree, init, exp testcase.Testable) {
-		initTc := init.(tCpu)
-		initTc.pc = 64
-		initTc.ops.Off = 63
-		tree.Run("+63", initTc, exp)
-		initTc.ops.Off = -64
-		tree.Run("-64", initTc, exp)
-	}
-
-	run := func(tree testcase.Tree, init, exp testcase.Testable) {
-		initCpu := init.(tCpu)
-		expCpuS := initCpu
-		expCpuC := initCpu
-		jump := initCpu.pc + int(initCpu.ops.Off)
-		// TODO: clamp to [0,PROGEND]
-		bit := Flag(initCpu.ops.Src)
-		if initCpu.GetFlag(bit) {
-			expCpuS.pc = jump
-		} else {
-			expCpuC.pc = jump
-		}
-		brbs(&initCpu.Cpu, &initCpu.ops, nil)
-		tree.Run("Brbs", initCpu, expCpuS)
-		initCpu = init.(tCpu)
-		brbc(&initCpu.Cpu, &initCpu.ops, nil)
-		tree.Run("Brbc", initCpu, expCpuC)
-	}
-	branches := []testcase.Branch{brAllFlags, brBit, brBitFlag, brOffset, run}
-	root := testcase.Tree{"BRA", t, branches}
-	root.Start(tCpu{})
-}
-
 func TestFlag(t *testing.T) {
 	run := func(tree testcase.Tree, init, exp testcase.Testable) {
 		initCpu := init.(tCpu)
@@ -615,61 +568,4 @@ func TestBld(t *testing.T) {
 		tree.Run("Bld", initCpu, expCpu)
 	}
 	testcase.NewTree(t, "XFR", brAllFlags, brBitOff, brXfer, run).Start(tCpu{})
-}
-
-func TestJmpRjmp(t *testing.T) {
-	var cases = []struct {
-		mnem                     instr.Mnemonic
-		rmask, pcPre, a1, pcPost int
-	}{
-		{instr.Jmp, 0x00, 0x0000, 0x10000, 0x0000},
-		{instr.Jmp, 0x3f, 0x0000, 0x10000, 0x10000},
-		{instr.Jmp, 0x00, 0x0000, 0x2000, 0x2000},
-		{instr.Jmp, 0x3f, 0x0000, 0x2000, 0x2000},
-		{instr.Rjmp, 0x00, 0x0000, -1, 0xffff},
-		{instr.Rjmp, 0x3f, 0x0000, -1, 0x3fffff},
-		{instr.Rjmp, 0x00, 0xffff, 1, 0x0000},
-		{instr.Rjmp, 0x3f, 0xffff, 1, 0x10000},
-		{instr.Rjmp, 0x00, 0x1000, 0x07ff, 0x17ff},
-		{instr.Rjmp, 0x3f, 0x1000, 0x07ff, 0x17ff},
-	}
-	run := func(tree testcase.Tree, init, exp testcase.Testable) {
-		for n, c := range cases {
-			initCpu := init.(tCpu)
-			initCpu.ops.Off = c.a1
-			initCpu.pc = c.pcPre
-			initCpu.rmask[Eind] = c.rmask << 16
-			expCpu := initCpu
-			expCpu.pc = c.pcPost
-			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.ops, nil)
-			tree.Run(fmt.Sprintf("%s [%d]", c.mnem, n), initCpu, expCpu)
-		}
-	}
-	testcase.NewTree(t, "JMP", brAllFlags, run).Start(tCpu{})
-}
-
-func TestIjmpEijmp(t *testing.T) {
-	var cases = []struct {
-		mnem          instr.Mnemonic
-		eind, z, post int
-	}{
-		{instr.Ijmp, 0x00, 0x2000, 0x2000},
-		{instr.Ijmp, 0x3f, 0x2000, 0x2000},
-		{instr.Eijmp, 0x00, 0x2000, 0x2000},
-		{instr.Eijmp, 0x3f, 0x2000, 0x3f2000},
-	}
-	run := func(tree testcase.Tree, init, exp testcase.Testable) {
-		for n, c := range cases {
-			initCpu := init.(tCpu)
-			initCpu.SetReg(30, byte(c.z))
-			initCpu.SetReg(31, byte(c.z>>8))
-			initCpu.rmask[Eind] = 0x3f << 16
-			initCpu.ramp[Eind] = c.eind << 16
-			expCpu := initCpu
-			expCpu.pc = c.post
-			opFuncs[c.mnem](&initCpu.Cpu, &initCpu.ops, nil)
-			tree.Run(fmt.Sprintf("%s [%d]", c.mnem, n), initCpu, expCpu)
-		}
-	}
-	testcase.NewTree(t, "JMP", brAllFlags, run).Start(tCpu{})
 }
