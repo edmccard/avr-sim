@@ -3,11 +3,10 @@ package core
 import (
 	"fmt"
 	it "github.com/edmccard/avr-sim/instr"
-	"reflect"
 	"testing"
 )
 
-func TestABCDE(t *testing.T) {
+func TestOther(t *testing.T) {
 	testop := func(tag string, mnem it.Mnemonic, branches ...branch) {
 		if !testing.Short() {
 			branches = append([]branch{statusCases}, branches...)
@@ -15,42 +14,42 @@ func TestABCDE(t *testing.T) {
 		casetree{t, branches}.run(tcase{tag: tag, mnem: mnem})
 	}
 
-	testop("Ld", it.Ld, loadCase, iregCases(), iregActionCases)
-	testop("Ldd", it.Ldd, loadCase, iregCases(), iregDispCases)
-	testop("Lds", it.Lds, loadCase, directCase)
-	testop("Pop", it.Pop, loadCase, popCases)
-	testop("In", it.In, loadCase, portCase)
-	testop("Lpm", it.LpmEnhanced, zOnlyCase, lpmCases)
+	testop("Bclr", it.Bclr, srCases(false))
+	testop("Bld", it.Bld, bldCases())
+	testop("Brbc", it.Brbc, brClrCases, goCases)
+	testop("Brbc", it.Brbc, brSetCases, stayCase)
+	testop("Brbs", it.Brbs, brSetCases, goCases)
+	testop("Brbs", it.Brbs, brClrCases, stayCase)
+	testop("Bset", it.Bset, srCases(true))
+	testop("Bst", it.Bst, bstCases())
+	testop("Call", it.Call, callCases)
+	testop("Cbi", it.Cbi, portCase, iobitCases(false))
+	testop("Eicall", it.Eicall, eicallCases)
+	testop("Eijmp", it.Eijmp, eijmpCases)
 	testop("Elpm", it.ElpmEnhanced, zOnlyCase, elpmCases)
-	testop("St", it.St, storeCase, iregCases(), iregActionCases)
-	testop("Std", it.Std, storeCase, iregCases(), iregDispCases)
-	testop("Sts", it.Sts, storeCase, directCase)
-	testop("Push", it.Push, storeCase, pushCases)
-	testop("Out", it.Out, storeCase, portCase)
+	testop("Icall", it.Icall, icallCases)
+	testop("Ijmp", it.Ijmp, ijmpCases)
+	testop("In", it.In, loadCase, portCase)
+	testop("Jmp", it.Jmp, jmpCases)
 	testop("Lac", it.Lac, zOnlyCase, lacCases)
 	testop("Las", it.Las, zOnlyCase, lasCases)
 	testop("Lat", it.Lat, zOnlyCase, latCases)
-	testop("Xch", it.Xch, zOnlyCase, xchCases)
-	testop("Jmp", it.Jmp, jmpCases)
-	testop("Call", it.Call, callCases)
-	testop("Rjmp", it.Rjmp, rjmpCases)
+	testop("Ld", it.Ld, loadCase, iregCases(), iregActionCases)
+	testop("Ldd", it.Ldd, loadCase, iregCases(), iregDispCases)
+	testop("Lds", it.Lds, loadCase, directCase)
+	testop("Lpm", it.LpmEnhanced, zOnlyCase, lpmCases)
+	testop("Out", it.Out, storeCase, portCase)
+	testop("Pop", it.Pop, loadCase, popCases)
+	testop("Push", it.Push, storeCase, pushCases)
 	testop("Rcall", it.Rcall, rcallCases)
-	testop("Ijmp", it.Ijmp, ijmpCases)
-	testop("Icall", it.Icall, icallCases)
-	testop("Eijmp", it.Eijmp, eijmpCases)
-	testop("Eicall", it.Eicall, eicallCases)
 	testop("Ret", it.Ret, retCases)
 	testop("Reti", it.Reti, retiCases)
-	testop("Brbs", it.Brbs, brSetCases, goCases)
-	testop("Brbs", it.Brbs, brClrCases, stayCase)
-	testop("Brbc", it.Brbc, brClrCases, goCases)
-	testop("Brbc", it.Brbc, brSetCases, stayCase)
-	testop("Bset", it.Bset, srCases(true))
-	testop("Bclr", it.Bclr, srCases(false))
+	testop("Rjmp", it.Rjmp, rjmpCases)
 	testop("Sbi", it.Sbi, portCase, iobitCases(true))
-	testop("Cbi", it.Cbi, portCase, iobitCases(false))
-	testop("Bld", it.Bld, bldCases())
-	testop("Bst", it.Bst, bstCases())
+	testop("St", it.St, storeCase, iregCases(), iregActionCases)
+	testop("Std", it.Std, storeCase, iregCases(), iregDispCases)
+	testop("Sts", it.Sts, storeCase, directCase)
+	testop("Xch", it.Xch, zOnlyCase, xchCases)
 }
 
 var loadCase = branch{
@@ -329,10 +328,6 @@ var eijmpCases = branch{
 }
 
 var eicallCases = branch{
-	{tag: "no ramp",
-		init: cdata{pc: 0x1234, ptr: 0x2000, sp: 0x3ff},
-		exp: cdata{pc: 0x2000, sp: 0x3fd,
-			savepc: stack{0x3ff: 0x34, 0x3fe: 0x12}}},
 	{tag: "ramp",
 		init: cdata{ramp: 0x1, pc: 0x123456, ptr: 0x2000, sp: 0x3ff},
 		exp: cdata{pc: 0x12000, sp: 0x3fc,
@@ -500,335 +495,4 @@ func bstCases() branch {
 		clrcases[i].exp = cdata{status: flags{FlagT: false}}
 	}
 	return append(setcases, clrcases...)
-}
-
-type key int
-
-const (
-	action key = iota
-	addr
-	bit
-	disp
-	dstreg
-	dstval
-	ireg
-	iregop
-	mval
-	pc
-	port
-	ptr
-	pval
-	ramp
-	savepc
-	sp
-	srcreg
-	srcval
-	status
-)
-
-type cdata map[key]interface{}
-
-type stack map[int]int
-
-type flash map[int]int
-
-type flags map[Flag]bool
-
-func (this cdata) merge(that cdata) cdata {
-	merged := make(map[key]interface{})
-	for k, v := range this {
-		merged[k] = v
-	}
-	for k, v := range that {
-		if prev, ok := merged[k]; ok && (k == status) {
-			x := make(flags)
-			for k2, v2 := range prev.(flags) {
-				x[k2] = v2
-			}
-			for k2, v2 := range v.(flags) {
-				x[k2] = v2
-			}
-			merged[k] = x
-		} else {
-			merged[k] = v
-		}
-	}
-	return merged
-}
-
-func (data cdata) musthave(k key) interface{} {
-	if val, ok := data[k]; ok {
-		return val
-	}
-	panic(fmt.Sprintf("missing case data %s", k))
-}
-
-type branch []tcase
-
-type branches []branch
-
-type tcase struct {
-	tag  string
-	init cdata
-	exp  cdata
-	mnem it.Mnemonic
-}
-
-func (this tcase) merge(that tcase) tcase {
-	return tcase{
-		tag:  this.tag + " " + that.tag,
-		init: this.init.merge(that.init),
-		exp:  this.exp.merge(that.exp),
-		mnem: this.mnem,
-	}
-}
-
-func (tc tcase) run(t *testing.T) {
-	init := newsystem()
-	init.apply(tc.init)
-	// TODO: is clone needed when applying merged data?
-	// exp := init.clone()
-	exp := newsystem()
-	exp.apply(tc.init.merge(tc.exp))
-	opFuncs[tc.mnem](&init.cpu, &init.cpu.ops, &init.mem)
-	// TODO: handle cycles better
-	exp.cpu.cycles = init.cpu.cycles
-	if !init.equals(&exp) {
-		t.Error(tc.tag)
-		fmt.Println("INIT:", init)
-		fmt.Println("EXP: ", exp)
-	}
-}
-
-type tmem struct {
-	data map[Addr]byte
-	prog map[Addr]uint16
-}
-
-func newtmem() tmem {
-	return tmem{data: make(map[Addr]byte), prog: make(map[Addr]uint16)}
-}
-
-func (m tmem) clone() tmem {
-	dup := newtmem()
-	for k, v := range m.data {
-		dup.data[k] = v
-	}
-	for k, v := range m.prog {
-		dup.prog[k] = v
-	}
-	return dup
-}
-
-func (this tmem) equals(that tmem) bool {
-	return reflect.DeepEqual(this.data, that.data) &&
-		reflect.DeepEqual(this.prog, that.prog)
-}
-
-func (m *tmem) ReadData(addr Addr) byte {
-	if val, ok := m.data[addr]; ok {
-		return val
-	}
-	return 0x9e
-}
-
-func (m *tmem) WriteData(addr Addr, val byte) {
-	m.data[addr] = val
-}
-
-func (m *tmem) ReadProgram(addr Addr) uint16 {
-	if val, ok := m.prog[addr]; ok {
-		return val
-	}
-	return 0
-}
-
-func (m *tmem) LoadProgram(addr Addr) byte {
-	if val, ok := m.prog[addr>>1]; ok {
-		return byte(val >> ((uint(addr) & 0x1) * 8))
-	}
-	return 0
-}
-
-type system struct {
-	cpu Cpu
-	mem tmem
-}
-
-func newsystem() system {
-	return system{cpu: Cpu{}, mem: newtmem()}
-}
-
-func (s *system) apply(data cdata) {
-	// do "global" things like status here first
-	if statval, ok := data[status]; ok {
-		for k, v := range statval.(flags) {
-			s.cpu.flags[k] = v
-		}
-	}
-	if spval, ok := data[sp]; ok {
-		s.cpu.sp = spval.(int)
-	}
-	if dsp, ok := data[disp]; ok {
-		s.cpu.ops.Off = dsp.(int)
-	}
-
-	if val, ok := data[pc]; ok {
-		// jumps, calls, returns, branches
-		s.applyoffset(val.(int), data)
-		return
-	}
-	if val, ok := data[bit]; ok {
-		// bset/bclr, bld/bst, sbi/cbi
-		s.applybitop(val.(int), data)
-		return
-	}
-	if val, ok := data[ireg]; ok {
-		// indirect loads/stores/atomics
-		s.applyindirect(val.(it.IndexReg), data)
-		return
-	}
-	if val, ok := data[addr]; ok {
-		// direct loads/stores, push/pop, in/out
-		s.applydirect(Addr(val.(int)), data)
-		return
-	}
-}
-
-func (s *system) applyoffset(offset int, data cdata) {
-	if eindval, ok := data[ramp]; ok {
-		// eixxx
-		s.setramp(Eind, eindval.(int))
-	}
-	if val, ok := data[ptr]; ok {
-		// ixxx/eixxx
-		s.setindex(it.Z.Reg(), val.(int))
-	}
-	if stk, ok := data[savepc]; ok {
-		// calls/returns
-		for a, v := range stk.(stack) {
-			s.mem.WriteData(Addr(a), byte(v))
-		}
-	}
-	if bitnum, ok := data[bit]; ok {
-		// branches
-		s.cpu.ops.Src = bitnum.(int)
-	}
-	s.cpu.pc = offset
-}
-
-func (s *system) applyindirect(base it.IndexReg, data cdata) {
-	action := data.musthave(action).(it.IndexAction)
-	indexreg := base.WithAction(action)
-	if reg, ok := data[srcreg]; ok {
-		s.cpu.reg[reg.(int)] = data.musthave(srcval).(int)
-		s.cpu.ops.Src = reg.(int)
-		s.cpu.ops.Dst = int(indexreg)
-	} else {
-		reg := data.musthave(dstreg).(int)
-		s.cpu.ops.Src = int(indexreg)
-		s.cpu.ops.Dst = reg
-		if dval, ok := data[dstval]; ok {
-			s.cpu.reg[reg] = dval.(int)
-		}
-	}
-	iptr := data.musthave(ptr).(int)
-	s.setindex(indexreg.Reg(), iptr)
-	if rmp, ok := data[ramp]; ok {
-		s.setramp(Ramp(base), rmp.(int))
-	}
-	if memval, ok := data[mval]; ok {
-		if maddr, ok := data[addr]; ok {
-			s.mem.WriteData(Addr(maddr.(int)), byte(memval.(int)))
-		} else {
-			s.mem.WriteData(Addr(iptr), byte(memval.(int)))
-		}
-	} else if progval, ok := data[pval]; ok {
-		maddr := data.musthave(addr).(int)
-		s.mem.prog[Addr(maddr)] = uint16(progval.(int))
-	}
-}
-
-func (s *system) applydirect(maddr Addr, data cdata) {
-	ioport, hasioport := data[port]
-	if !hasioport {
-		s.cpu.ops.Off = int(maddr)
-	}
-	if memval, ok := data[mval]; ok {
-		s.mem.WriteData(maddr, byte(memval.(int)))
-	}
-	if reg, ok := data[srcreg]; ok {
-		s.cpu.reg[reg.(int)] = data.musthave(srcval).(int)
-		s.cpu.ops.Src = reg.(int)
-		s.cpu.ops.Dst = reg.(int)
-		if hasioport {
-			s.cpu.ops.Dst = ioport.(int)
-		}
-	} else {
-		reg := data.musthave(dstreg).(int)
-		s.cpu.ops.Src = reg
-		s.cpu.ops.Dst = reg
-		if hasioport {
-			s.cpu.ops.Src = ioport.(int)
-		}
-		if dval, ok := data[dstval]; ok {
-			s.cpu.reg[reg] = dval.(int)
-		}
-	}
-}
-
-func (s *system) applybitop(b int, data cdata) {
-	if ioport, ok := data[port]; ok {
-		// cbi/sbi
-		memval := data.musthave(mval).(int)
-		maddr := data.musthave(addr).(int)
-		s.mem.WriteData(Addr(maddr), byte(memval))
-		s.cpu.ops.Dst = ioport.(int)
-		s.cpu.ops.Src = ioport.(int)
-		s.cpu.ops.Off = b
-	} else if reg, ok := data[srcreg]; ok {
-		sval := data.musthave(srcval).(int)
-		s.cpu.reg[reg.(int)] = sval
-		s.cpu.ops.Src = reg.(int)
-		s.cpu.ops.Dst = reg.(int)
-		s.cpu.ops.Off = b
-	} else {
-		// bset/bclr
-		s.cpu.ops.Src = b
-		s.cpu.ops.Dst = b
-	}
-}
-
-func (s *system) setramp(base Ramp, val int) {
-	s.cpu.setRmask(base, 0x3f)
-	s.cpu.SetRamp(base, byte(val))
-}
-
-func (s *system) setindex(reg, val int) {
-	s.cpu.reg[reg] = val & 0xff
-	s.cpu.reg[reg+1] = val >> 8
-}
-
-func (s *system) clone() system {
-	return system{cpu: s.cpu, mem: s.mem.clone()}
-}
-
-func (this *system) equals(that *system) bool {
-	return this.cpu == that.cpu && this.mem.equals(that.mem)
-}
-
-type casetree struct {
-	t        *testing.T
-	branches branches
-}
-
-func (tree casetree) run(builder tcase) {
-	if len(tree.branches) == 0 {
-		builder.run(tree.t)
-	} else {
-		next := casetree{t: tree.t, branches: tree.branches[1:]}
-		for _, tc := range tree.branches[0] {
-			next.run(builder.merge(tc))
-		}
-	}
 }
