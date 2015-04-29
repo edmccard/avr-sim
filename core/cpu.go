@@ -135,6 +135,34 @@ func (c *Cpu) setRmask(reg Ramp, mask byte) {
 	c.rmask[reg] = (int(mask) << 16)
 }
 
+func (c *Cpu) GetSP() uint16 {
+	return uint16(c.sp)
+}
+
+func (c *Cpu) GetSPL() byte {
+	return byte(c.sp & 0xff)
+}
+
+func (c *Cpu) GetSPH() byte {
+	return byte(c.sp >> 8)
+}
+
+func (c *Cpu) SetSP(sp uint16) {
+	c.sp = int(sp)
+}
+
+func (c *Cpu) SetSPL(spl byte) {
+	c.sp = (c.sp & 0xff00) | int(spl)
+}
+
+func (c *Cpu) SetSPH(sph byte) {
+	c.sp = (c.sp & 0xff) | int(sph) << 8
+}
+
+func (c *Cpu) GetPC() int {
+	return c.pc
+}
+
 func (c *Cpu) indirect(ireg instr.IndexReg, q int) int {
 	base := ireg.Base()
 	action := ireg.Action()
