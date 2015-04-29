@@ -45,6 +45,12 @@ func TestABCDE(t *testing.T) {
 	testop("Brbs", it.Brbs, brClrCases, stayCase)
 	testop("Brbc", it.Brbc, brClrCases, goCases)
 	testop("Brbc", it.Brbc, brSetCases, stayCase)
+	testop("Bset", it.Bset, srCases(true))
+	testop("Bclr", it.Bclr, srCases(false))
+	testop("Sbi", it.Sbi, portCase, iobitCases(true))
+	testop("Cbi", it.Cbi, portCase, iobitCases(false))
+	testop("Bld", it.Bld, bldCases())
+	testop("Bst", it.Bst, bstCases())
 }
 
 var loadCase = branch{
@@ -348,33 +354,33 @@ var retiCases = branch{
 	{tag: "no ramp",
 		init: cdata{pc: 0x1000, sp: 0x3fd,
 			savepc: stack{0x3ff: 0x34, 0x3fe: 0x12}},
-		exp: cdata{pc: 0x1234, sp: 0x3ff, set: flags{FlagI}}},
+		exp: cdata{pc: 0x1234, sp: 0x3ff, status: flags{FlagI: true}}},
 	{tag: "ramp",
 		init: cdata{ramp: 0x1, pc: 0x1000, sp: 0x3fc,
 			savepc: stack{0x3ff: 0x56, 0x3fe: 0x34, 0x3fd: 0x12}},
-		exp: cdata{pc: 0x123456, sp: 0x3ff, set: flags{FlagI}}},
+		exp: cdata{pc: 0x123456, sp: 0x3ff, status: flags{FlagI: true}}},
 }
 
 var brSetCases = branch{
-	{tag: "C set", init: cdata{bit: 0, set: flags{FlagC}}},
-	{tag: "Z set", init: cdata{bit: 1, set: flags{FlagZ}}},
-	{tag: "N set", init: cdata{bit: 2, set: flags{FlagN}}},
-	{tag: "V set", init: cdata{bit: 3, set: flags{FlagV}}},
-	{tag: "S set", init: cdata{bit: 4, set: flags{FlagS}}},
-	{tag: "H set", init: cdata{bit: 5, set: flags{FlagH}}},
-	{tag: "T set", init: cdata{bit: 6, set: flags{FlagT}}},
-	{tag: "I set", init: cdata{bit: 7, set: flags{FlagI}}},
+	{tag: "C set", init: cdata{bit: 0, status: flags{FlagC: true}}},
+	{tag: "Z set", init: cdata{bit: 1, status: flags{FlagZ: true}}},
+	{tag: "N set", init: cdata{bit: 2, status: flags{FlagN: true}}},
+	{tag: "V set", init: cdata{bit: 3, status: flags{FlagV: true}}},
+	{tag: "S set", init: cdata{bit: 4, status: flags{FlagS: true}}},
+	{tag: "H set", init: cdata{bit: 5, status: flags{FlagH: true}}},
+	{tag: "T set", init: cdata{bit: 6, status: flags{FlagT: true}}},
+	{tag: "I set", init: cdata{bit: 7, status: flags{FlagI: true}}},
 }
 
 var brClrCases = branch{
-	{tag: "C clr", init: cdata{bit: 0, clr: flags{FlagC}}},
-	{tag: "Z clr", init: cdata{bit: 1, clr: flags{FlagZ}}},
-	{tag: "N clr", init: cdata{bit: 2, clr: flags{FlagN}}},
-	{tag: "V clr", init: cdata{bit: 3, clr: flags{FlagV}}},
-	{tag: "S clr", init: cdata{bit: 4, clr: flags{FlagS}}},
-	{tag: "H clr", init: cdata{bit: 5, clr: flags{FlagH}}},
-	{tag: "T clr", init: cdata{bit: 6, clr: flags{FlagT}}},
-	{tag: "I clr", init: cdata{bit: 7, clr: flags{FlagI}}},
+	{tag: "C clr", init: cdata{bit: 0, status: flags{FlagC: false}}},
+	{tag: "Z clr", init: cdata{bit: 1, status: flags{FlagZ: false}}},
+	{tag: "N clr", init: cdata{bit: 2, status: flags{FlagN: false}}},
+	{tag: "V clr", init: cdata{bit: 3, status: flags{FlagV: false}}},
+	{tag: "S clr", init: cdata{bit: 4, status: flags{FlagS: false}}},
+	{tag: "H clr", init: cdata{bit: 5, status: flags{FlagH: false}}},
+	{tag: "T clr", init: cdata{bit: 6, status: flags{FlagT: false}}},
+	{tag: "I clr", init: cdata{bit: 7, status: flags{FlagI: false}}},
 }
 
 var goCases = branch{
@@ -406,8 +412,94 @@ var stayCase = branch{
 }
 
 var statusCases = branch{
-	{tag: "Srff", init: cdata{status: 0xff}},
-	{tag: "Sr00", init: cdata{status: 0x00}},
+	{tag: "Srff",
+		init: cdata{status: flags{
+			FlagC: true, FlagZ: true, FlagN: true, FlagV: true,
+			FlagS: true, FlagH: true, FlagT: true, FlagI: true}}},
+	{tag: "Sr00",
+		init: cdata{status: flags{
+			FlagC: false, FlagZ: false, FlagN: false, FlagV: false,
+			FlagS: false, FlagH: false, FlagT: false, FlagI: false}}},
+}
+
+func srCases(v bool) branch {
+	num := 8
+	if testing.Short() {
+		num = 1
+	}
+	cases := make(branch, num)
+	for i := 0; i < num; i++ {
+		if v {
+			cases[i].tag = fmt.Sprintf("%s set", Flag(i))
+		} else {
+			cases[i].tag = fmt.Sprintf("%s clr", Flag(i))
+		}
+		cases[i].init = cdata{bit: i}
+		cases[i].exp = cdata{status: flags{Flag(i): v}}
+	}
+	return cases
+}
+
+func iobitCases(v bool) branch {
+	num := 8
+	if testing.Short() {
+		num = 1
+	}
+	cases := make(branch, num)
+	for i := 0; i < num; i++ {
+		if v {
+			cases[i].tag = fmt.Sprintf("set b%d", i)
+			cases[i].init = cdata{bit: i, mval: 0}
+			cases[i].exp = cdata{mval: 1 << uint(i)}
+		} else {
+			cases[i].tag = fmt.Sprintf("clr b%d", i)
+			cases[i].init = cdata{bit: i, mval: 0xff}
+			cases[i].exp = cdata{mval: ^(1 << uint(i)) & 0xff}
+		}
+	}
+	return cases
+}
+
+func bldCases() branch {
+	num := 8
+	if testing.Short() {
+		num = 1
+	}
+	setcases := make(branch, num)
+	clrcases := make(branch, num)
+	for i := 0; i < num; i++ {
+		setcases[i].tag = fmt.Sprintf("b%d T set", i)
+		clrcases[i].tag = fmt.Sprintf("b%d T clr", i)
+		setcases[i].init = cdata{
+			status: flags{FlagT: true}, srcreg: 16, srcval: 0, bit: i,
+		}
+		setcases[i].exp = cdata{srcval: 1 << uint(i)}
+		clrcases[i].init = cdata{
+			status: flags{FlagT: false}, srcreg: 16, srcval: 0xff, bit: i,
+		}
+		clrcases[i].exp = cdata{srcval: ^(1 << uint(i)) & 0xff}
+	}
+	return append(setcases, clrcases...)
+}
+
+func bstCases() branch {
+	num := 8
+	if testing.Short() {
+		num = 1
+	}
+	setcases := make(branch, num)
+	clrcases := make(branch, num)
+	for i := 0; i < num; i++ {
+		setcases[i].tag = fmt.Sprintf("b%d set", i)
+		clrcases[i].tag = fmt.Sprintf("b%d clr", i)
+		setcases[i].init = cdata{srcreg: 16, srcval: 1 << uint(i), bit: i}
+		setcases[i].exp = cdata{status: flags{FlagT: true}}
+		clrcases[i].init = cdata{
+			srcreg: 16, srcval: ^(1 << uint(i)) & 0xff, bit: i,
+		}
+		clrcases[i].exp = cdata{status: flags{FlagT: false}}
+	}
+	return append(setcases, clrcases...)
 }
 
 type key int
@@ -416,7 +508,6 @@ const (
 	action key = iota
 	addr
 	bit
-	clr
 	disp
 	dstreg
 	dstval
@@ -429,7 +520,6 @@ const (
 	pval
 	ramp
 	savepc
-	set
 	sp
 	srcreg
 	srcval
@@ -442,7 +532,7 @@ type stack map[int]int
 
 type flash map[int]int
 
-type flags []Flag
+type flags map[Flag]bool
 
 func (this cdata) merge(that cdata) cdata {
 	merged := make(map[key]interface{})
@@ -450,8 +540,15 @@ func (this cdata) merge(that cdata) cdata {
 		merged[k] = v
 	}
 	for k, v := range that {
-		if prev, ok := merged[k]; ok && (k == set || k == clr) {
-			merged[k] = append(prev.(flags), v.(flags)...)
+		if prev, ok := merged[k]; ok && (k == status) {
+			x := make(flags)
+			for k2, v2 := range prev.(flags) {
+				x[k2] = v2
+			}
+			for k2, v2 := range v.(flags) {
+				x[k2] = v2
+			}
+			merged[k] = x
 		} else {
 			merged[k] = v
 		}
@@ -563,16 +660,8 @@ func newsystem() system {
 func (s *system) apply(data cdata) {
 	// do "global" things like status here first
 	if statval, ok := data[status]; ok {
-		s.cpu.SregFromByte(byte(statval.(int)))
-	}
-	if sflags, ok := data[set]; ok {
-		for _, f := range sflags.(flags) {
-			s.cpu.flags[f] = true
-		}
-	}
-	if cflags, ok := data[clr]; ok {
-		for _, f := range cflags.(flags) {
-			s.cpu.flags[f] = false
+		for k, v := range statval.(flags) {
+			s.cpu.flags[k] = v
 		}
 	}
 	if spval, ok := data[sp]; ok {
@@ -583,14 +672,22 @@ func (s *system) apply(data cdata) {
 	}
 
 	if val, ok := data[pc]; ok {
+		// jumps, calls, returns, branches
 		s.applyoffset(val.(int), data)
 		return
 	}
+	if val, ok := data[bit]; ok {
+		// bset/bclr, bld/bst, sbi/cbi
+		s.applybitop(val.(int), data)
+		return
+	}
 	if val, ok := data[ireg]; ok {
+		// indirect loads/stores/atomics
 		s.applyindirect(val.(it.IndexReg), data)
 		return
 	}
 	if val, ok := data[addr]; ok {
+		// direct loads/stores, push/pop, in/out
 		s.applydirect(Addr(val.(int)), data)
 		return
 	}
@@ -616,34 +713,6 @@ func (s *system) applyoffset(offset int, data cdata) {
 		s.cpu.ops.Src = bitnum.(int)
 	}
 	s.cpu.pc = offset
-}
-
-func (s *system) applydirect(maddr Addr, data cdata) {
-	ioport, hasioport := data[port]
-	if !hasioport {
-		s.cpu.ops.Off = int(maddr)
-	}
-	if memval, ok := data[mval]; ok {
-		s.mem.WriteData(maddr, byte(memval.(int)))
-	}
-	if reg, ok := data[srcreg]; ok {
-		s.cpu.reg[reg.(int)] = data.musthave(srcval).(int)
-		s.cpu.ops.Src = reg.(int)
-		s.cpu.ops.Dst = reg.(int)
-		if hasioport {
-			s.cpu.ops.Dst = ioport.(int)
-		}
-	} else {
-		reg := data.musthave(dstreg).(int)
-		s.cpu.ops.Src = reg
-		s.cpu.ops.Dst = reg
-		if hasioport {
-			s.cpu.ops.Src = ioport.(int)
-		}
-		if dval, ok := data[dstval]; ok {
-			s.cpu.reg[reg] = dval.(int)
-		}
-	}
 }
 
 func (s *system) applyindirect(base it.IndexReg, data cdata) {
@@ -675,6 +744,56 @@ func (s *system) applyindirect(base it.IndexReg, data cdata) {
 	} else if progval, ok := data[pval]; ok {
 		maddr := data.musthave(addr).(int)
 		s.mem.prog[Addr(maddr)] = uint16(progval.(int))
+	}
+}
+
+func (s *system) applydirect(maddr Addr, data cdata) {
+	ioport, hasioport := data[port]
+	if !hasioport {
+		s.cpu.ops.Off = int(maddr)
+	}
+	if memval, ok := data[mval]; ok {
+		s.mem.WriteData(maddr, byte(memval.(int)))
+	}
+	if reg, ok := data[srcreg]; ok {
+		s.cpu.reg[reg.(int)] = data.musthave(srcval).(int)
+		s.cpu.ops.Src = reg.(int)
+		s.cpu.ops.Dst = reg.(int)
+		if hasioport {
+			s.cpu.ops.Dst = ioport.(int)
+		}
+	} else {
+		reg := data.musthave(dstreg).(int)
+		s.cpu.ops.Src = reg
+		s.cpu.ops.Dst = reg
+		if hasioport {
+			s.cpu.ops.Src = ioport.(int)
+		}
+		if dval, ok := data[dstval]; ok {
+			s.cpu.reg[reg] = dval.(int)
+		}
+	}
+}
+
+func (s *system) applybitop(b int, data cdata) {
+	if ioport, ok := data[port]; ok {
+		// cbi/sbi
+		memval := data.musthave(mval).(int)
+		maddr := data.musthave(addr).(int)
+		s.mem.WriteData(Addr(maddr), byte(memval))
+		s.cpu.ops.Dst = ioport.(int)
+		s.cpu.ops.Src = ioport.(int)
+		s.cpu.ops.Off = b
+	} else if reg, ok := data[srcreg]; ok {
+		sval := data.musthave(srcval).(int)
+		s.cpu.reg[reg.(int)] = sval
+		s.cpu.ops.Src = reg.(int)
+		s.cpu.ops.Dst = reg.(int)
+		s.cpu.ops.Off = b
+	} else {
+		// bset/bclr
+		s.cpu.ops.Src = b
+		s.cpu.ops.Dst = b
 	}
 }
 
@@ -711,5 +830,3 @@ func (tree casetree) run(builder tcase) {
 		}
 	}
 }
-
-var skipdecoder = it.NewDecoder(it.NewSetXmega())
