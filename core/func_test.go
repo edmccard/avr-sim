@@ -587,10 +587,12 @@ func (tc tcase) run(t *testing.T) {
 	init := newsystem()
 	init.apply(tc.init)
 	// TODO: is clone needed when applying merged data?
-	exp := init.clone()
-	// exp := newsystem()
+	// exp := init.clone()
+	exp := newsystem()
 	exp.apply(tc.init.merge(tc.exp))
 	opFuncs[tc.mnem](&init.cpu, &init.cpu.ops, &init.mem)
+	// TODO: handle cycles better
+	exp.cpu.cycles = init.cpu.cycles
 	if !init.equals(&exp) {
 		t.Error(tc.tag)
 		fmt.Println("INIT:", init)

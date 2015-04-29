@@ -3,14 +3,15 @@ package core
 import "github.com/edmccard/avr-sim/instr"
 
 type Cpu struct {
-	reg   [32]int
-	flags [8]bool
-	sp    int
-	pc    int
-	ramp  [5]int // D,X,Y,Z,EIND
-	rmask [5]int
-	skip  bool
-	ops   instr.Operands
+	reg    [32]int
+	flags  [8]bool
+	sp     int
+	pc     int
+	ramp   [5]int // D,X,Y,Z,EIND
+	rmask  [5]int
+	skip   bool
+	ops    instr.Operands
+	cycles uint
 }
 
 type Flag int
@@ -45,6 +46,7 @@ func (c *Cpu) Reset(sp int, pc int) {
 }
 
 func (c *Cpu) Step(mem Memory, d *instr.Decoder) {
+	c.cycles = 0
 	op, op2, mnem := c.fetch(mem, d)
 	d.DecodeOperands(&c.ops, mnem, op, op2)
 	opFuncs[mnem](c, &c.ops, mem)
@@ -156,7 +158,7 @@ func (c *Cpu) SetSPL(spl byte) {
 }
 
 func (c *Cpu) SetSPH(sph byte) {
-	c.sp = (c.sp & 0xff) | int(sph) << 8
+	c.sp = (c.sp & 0xff) | int(sph)<<8
 }
 
 func (c *Cpu) GetPC() int {
@@ -172,11 +174,13 @@ func (c *Cpu) indirect(ireg instr.IndexReg, q int) int {
 	case instr.NoAction:
 		addr = (addr + int(q)) & (c.rmask[base] | 0xffff)
 	case instr.PreDec:
+		c.cycles += 2
 		addr = (addr - 1) & (c.rmask[base] | 0xffff)
 		c.reg[r] = addr & 0xff
 		c.reg[r+1] = (addr >> 8) & 0xff
 		c.ramp[base] = addr & c.rmask[base]
 	case instr.PostInc:
+		c.cycles += 1
 		a2 := (addr + 1) & (c.rmask[base] | 0xffff)
 		c.reg[r] = a2 & 0xff
 		c.reg[r+1] = (a2 >> 8) & 0xff
@@ -186,10 +190,12 @@ func (c *Cpu) indirect(ireg instr.IndexReg, q int) int {
 }
 
 func (c *Cpu) spInc(offset int) {
+	c.cycles++
 	c.sp = (c.sp + offset) & 0xffff
 }
 
 func (c *Cpu) pcInc(offset int) {
+	c.cycles++
 	c.pc = (c.pc + offset) & (c.rmask[Eind] | 0xffff)
 }
 
@@ -228,6 +234,7 @@ func addition(cpu *Cpu, o *instr.Operands, carry bool) {
 }
 
 func adiw(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.cycles++
 	d := cpu.reg[o.Dst] | (cpu.reg[o.Dst+1] << 8)
 	k := o.Src
 
@@ -321,6 +328,7 @@ func subtractionCarry(cpu *Cpu, d, r int, carry bool) int {
 }
 
 func sbiw(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.cycles++
 	d := cpu.reg[o.Dst] | (cpu.reg[o.Dst+1] << 8)
 	k := o.Src
 
@@ -381,6 +389,7 @@ func eor(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func mul(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.cycles++
 	res := cpu.reg[o.Dst] * cpu.reg[o.Src]
 	cpu.flags[FlagC] = res >= 0x8000
 	cpu.flags[FlagZ] = res == 0
@@ -389,6 +398,7 @@ func mul(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func fmul(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.cycles++
 	res := cpu.reg[o.Dst] * cpu.reg[o.Src]
 	cpu.flags[FlagC] = res >= 0x8000
 	res = (res << 1) & 0xffff
@@ -398,6 +408,7 @@ func fmul(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func muls(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.cycles++
 	d := int8(cpu.reg[o.Dst])
 	r := int8(cpu.reg[o.Src])
 	res := (int(d) * int(r)) & 0xffff
@@ -408,6 +419,7 @@ func muls(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func fmuls(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.cycles++
 	d := int8(cpu.reg[o.Dst])
 	r := int8(cpu.reg[o.Src])
 	res := (int(d) * int(r)) & 0xffff
@@ -419,6 +431,7 @@ func fmuls(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func mulsu(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.cycles++
 	d := int8(cpu.reg[o.Dst])
 	r := cpu.reg[o.Src]
 	res := (int(d) * int(r)) & 0xffff
@@ -429,6 +442,7 @@ func mulsu(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func fmulsu(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.cycles++
 	d := int8(cpu.reg[o.Dst])
 	r := cpu.reg[o.Src]
 	res := (int(d) * int(r)) & 0xffff
@@ -544,21 +558,26 @@ func bld(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func ld(cpu *Cpu, o *instr.Operands, mem Memory) {
+	// TODO tiny/xmega indirect cycles
 	addr := Addr(cpu.indirect(instr.IndexReg(o.Src), 0))
 	cpu.reg[o.Dst] = int(mem.ReadData(addr))
 }
 
 func st(cpu *Cpu, o *instr.Operands, mem Memory) {
 	addr := Addr(cpu.indirect(instr.IndexReg(o.Dst), 0))
+	// TODO: tiny/xmega indirect cycles
+	cpu.cycles = 2
 	mem.WriteData(addr, byte(cpu.reg[o.Src]))
 }
 
 func ldd(cpu *Cpu, o *instr.Operands, mem Memory) {
 	addr := Addr(cpu.indirect(instr.IndexReg(o.Src), o.Off))
+	cpu.cycles = 2
 	cpu.reg[o.Dst] = int(mem.ReadData(addr))
 }
 
 func std(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.cycles++
 	addr := Addr(cpu.indirect(instr.IndexReg(o.Dst), o.Off))
 	mem.WriteData(addr, byte(cpu.reg[o.Src]))
 }
@@ -568,10 +587,12 @@ func lds(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func sts(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.cycles++
 	mem.WriteData(Addr(cpu.ramp[RampD]|o.Off), byte(cpu.reg[o.Src]))
 }
 
 func push(cpu *Cpu, o *instr.Operands, mem Memory) {
+	// TODO xmega -1
 	mem.WriteData(Addr(cpu.sp), byte(cpu.reg[o.Src]))
 	cpu.spInc(-1)
 }
@@ -594,14 +615,17 @@ func brbc(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func eijmp(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.cycles++
 	cpu.pc = cpu.reg[30] | (cpu.reg[31] << 8) | cpu.ramp[Eind]
 }
 
 func ijmp(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.cycles++
 	cpu.pc = cpu.reg[30] | (cpu.reg[31] << 8)
 }
 
 func jmp(cpu *Cpu, o *instr.Operands, mem Memory) {
+	cpu.cycles++
 	cpu.pc = o.Off & (cpu.rmask[Eind] | 0xffff)
 }
 
@@ -612,21 +636,28 @@ func rjmp(cpu *Cpu, o *instr.Operands, mem Memory) {
 func call(cpu *Cpu, o *instr.Operands, mem Memory) {
 	pushPC(cpu, mem)
 	jmp(cpu, o, mem)
+	cpu.cycles--
 }
 
 func eicall(cpu *Cpu, o *instr.Operands, mem Memory) {
 	pushPC(cpu, mem)
 	eijmp(cpu, o, mem)
+	// TODO xmega -1
+	cpu.cycles--
 }
 
 func icall(cpu *Cpu, o *instr.Operands, mem Memory) {
+	// TODO xmega -1
 	pushPC(cpu, mem)
 	ijmp(cpu, o, mem)
+	cpu.cycles--
 }
 
 func rcall(cpu *Cpu, o *instr.Operands, mem Memory) {
+	// TODO xmega -1, tiny always 4
 	pushPC(cpu, mem)
 	rjmp(cpu, o, mem)
+	cpu.cycles--
 }
 
 func pushPC(cpu *Cpu, mem Memory) {
@@ -650,6 +681,7 @@ func reti(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func popPC(cpu *Cpu, mem Memory) {
+	cpu.cycles++
 	cpu.pc = 0
 	if cpu.rmask[Eind] != 0 {
 		cpu.spInc(1)
@@ -728,12 +760,16 @@ func out(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func cbi(cpu *Cpu, o *instr.Operands, mem Memory) {
+	// TODO tiny/xmega - 1
+	cpu.cycles++
 	addr := Addr(o.Dst + 0x20)
 	val := mem.ReadData(addr) & ^(1 << uint(o.Off))
 	mem.WriteData(addr, val)
 }
 
 func sbi(cpu *Cpu, o *instr.Operands, mem Memory) {
+	// TODO tiny/xmega -1
+	cpu.cycles++
 	addr := Addr(o.Dst + 0x20)
 	val := mem.ReadData(addr) | (1 << uint(o.Off))
 	mem.WriteData(addr, val)
@@ -760,6 +796,7 @@ func elpme(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func loadProgMem(cpu *Cpu, o *instr.Operands, mem Memory, noramp bool) {
+	cpu.cycles += 2
 	var tmpMask, tmpRamp int
 	if noramp {
 		tmpMask = cpu.rmask[RampZ]
