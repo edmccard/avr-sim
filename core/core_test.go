@@ -109,6 +109,7 @@ func (tc tcase) run(t *testing.T) {
 			exp.mem.prog[Addr(k+ipc)] = uint16(v)
 		}
 		init.cpu.Step(&init.mem, &decoder)
+		exp.cpu.ops = init.cpu.ops
 	} else {
 		opFuncs[tc.mnem](&init.cpu, &init.cpu.ops, &init.mem)
 	}
@@ -182,12 +183,13 @@ func (s *system) apply(data cdata) {
 	if dsp, ok := data[disp]; ok {
 		s.cpu.ops.Off = dsp.(int)
 	}
+	_, haspwords := data[opcds]
 
-	if val, ok := data[pc]; ok {
+	if val, ok := data[pc]; ok && !haspwords {
 		// jumps, calls, returns, branches
 		s.applyoffset(val.(int), data)
 	} else if val, ok := data[bit]; ok {
-		// bset/bclr, bld/bst, sbi/cbi
+		// bset/bclr, bld/bst, sbi/cbi, sbrc/sbrs
 		s.applybitop(val.(int), data)
 	} else if val, ok := data[ireg]; ok {
 		// indirect loads/stores/atomics
@@ -196,11 +198,13 @@ func (s *system) apply(data cdata) {
 		// direct loads/stores, push/pop, in/out
 		s.applydirect(Addr(val.(int)), data)
 	} else {
+		// arithmetic including cpse
 		s.applyarith(data)
 	}
 }
 
 func (s *system) applyoffset(offset int, data cdata) {
+	s.cpu.pc = offset
 	if eindval, ok := data[ramp]; ok {
 		// eixxx
 		s.setramp(Eind, eindval.(int))
@@ -219,7 +223,6 @@ func (s *system) applyoffset(offset int, data cdata) {
 		// branches
 		s.cpu.ops.Src = bitnum.(int)
 	}
-	s.cpu.pc = offset
 }
 
 func (s *system) applyindirect(base it.IndexReg, data cdata) {
@@ -283,6 +286,11 @@ func (s *system) applydirect(maddr Addr, data cdata) {
 }
 
 func (s *system) applybitop(b int, data cdata) {
+	if ipc, ok := data[pc]; ok {
+		// sbrs/sbrc
+		s.cpu.pc = ipc.(int)
+	}
+
 	if ioport, ok := data[port]; ok {
 		// cbi/sbi
 		memval := data.musthave(mval).(int)
@@ -305,6 +313,9 @@ func (s *system) applybitop(b int, data cdata) {
 }
 
 func (s *system) applyarith(data cdata) {
+	if ipc, ok := data[pc]; ok {
+		s.cpu.pc = ipc.(int)
+	}
 	if reg, ok := data[srcreg]; ok {
 		sval := data.musthave(srcval)
 		switch sval := sval.(type) {
