@@ -12,6 +12,7 @@ type Cpu struct {
 	skip   bool
 	ops    instr.Operands
 	cycles uint
+	family Family
 }
 
 type Flag int
@@ -37,15 +38,23 @@ const (
 	Eind
 )
 
+type Family int
+
+const (
+	Mega Family = iota
+	Xmega
+	Tiny
+)
+
 func (c *Cpu) Reset(sp int, pc int) {
-	c.pc = pc
-	c.sp = sp
+	c.SetPC(pc)
+	c.SetSP(uint16(sp))
 	for i := range c.flags {
 		c.flags[i] = false
 	}
 }
 
-func (c *Cpu) Step(mem Memory, d *instr.Decoder) {
+func (c *Cpu) Step(mem Memory, d *instr.Decoder) uint {
 	c.cycles = 0
 	op, op2, mnem := c.fetch(mem, d)
 	d.DecodeOperands(&c.ops, mnem, op, op2)
@@ -54,6 +63,7 @@ func (c *Cpu) Step(mem Memory, d *instr.Decoder) {
 		c.skip = false
 		c.fetch(mem, d)
 	}
+	return c.cycles
 }
 
 func (c *Cpu) fetch(mem Memory, d *instr.Decoder) (instr.Opcode, instr.Opcode,
@@ -165,6 +175,10 @@ func (c *Cpu) GetPC() int {
 	return c.pc
 }
 
+func (c *Cpu) SetPC(pc int) {
+	c.pc = pc & (c.rmask[Eind] | 0xffff)
+}
+
 func (c *Cpu) indirect(ireg instr.IndexReg, q int) int {
 	base := ireg.Base()
 	action := ireg.Action()
@@ -172,6 +186,7 @@ func (c *Cpu) indirect(ireg instr.IndexReg, q int) int {
 	addr := c.ramp[base] | c.reg[r] | (c.reg[r+1] << 8)
 	switch action {
 	case instr.NoAction:
+		c.cycles++
 		addr = (addr + int(q)) & (c.rmask[base] | 0xffff)
 	case instr.PreDec:
 		c.cycles += 2
@@ -180,23 +195,26 @@ func (c *Cpu) indirect(ireg instr.IndexReg, q int) int {
 		c.reg[r+1] = (addr >> 8) & 0xff
 		c.ramp[base] = addr & c.rmask[base]
 	case instr.PostInc:
-		c.cycles += 1
+		c.cycles++
 		a2 := (addr + 1) & (c.rmask[base] | 0xffff)
 		c.reg[r] = a2 & 0xff
 		c.reg[r+1] = (a2 >> 8) & 0xff
 		c.ramp[base] = a2 & c.rmask[base]
 	}
+	if c.family != Mega {
+		c.cycles--
+	}
 	return addr
 }
 
 func (c *Cpu) spInc(offset int) {
-	c.cycles++
 	c.sp = (c.sp + offset) & 0xffff
+	c.cycles++
 }
 
 func (c *Cpu) pcInc(offset int) {
-	c.cycles++
 	c.pc = (c.pc + offset) & (c.rmask[Eind] | 0xffff)
+	c.cycles++
 }
 
 func nop(cpu *Cpu, o *instr.Operands, mem Memory) {
@@ -234,7 +252,6 @@ func addition(cpu *Cpu, o *instr.Operands, carry bool) {
 }
 
 func adiw(cpu *Cpu, o *instr.Operands, mem Memory) {
-	cpu.cycles++
 	d := cpu.reg[o.Dst] | (cpu.reg[o.Dst+1] << 8)
 	k := o.Src
 
@@ -249,6 +266,7 @@ func adiw(cpu *Cpu, o *instr.Operands, mem Memory) {
 
 	cpu.reg[o.Dst] = res & 0xff
 	cpu.reg[o.Dst+1] = res >> 8
+	cpu.cycles++
 }
 
 func sub(cpu *Cpu, o *instr.Operands, mem Memory) {
@@ -328,7 +346,6 @@ func subtractionCarry(cpu *Cpu, d, r int, carry bool) int {
 }
 
 func sbiw(cpu *Cpu, o *instr.Operands, mem Memory) {
-	cpu.cycles++
 	d := cpu.reg[o.Dst] | (cpu.reg[o.Dst+1] << 8)
 	k := o.Src
 
@@ -343,6 +360,7 @@ func sbiw(cpu *Cpu, o *instr.Operands, mem Memory) {
 
 	cpu.reg[o.Dst] = res & 0xff
 	cpu.reg[o.Dst+1] = res >> 8
+	cpu.cycles++
 }
 
 func and(cpu *Cpu, o *instr.Operands, mem Memory) {
@@ -389,26 +407,25 @@ func eor(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func mul(cpu *Cpu, o *instr.Operands, mem Memory) {
-	cpu.cycles++
 	res := cpu.reg[o.Dst] * cpu.reg[o.Src]
 	cpu.flags[FlagC] = res >= 0x8000
 	cpu.flags[FlagZ] = res == 0
 	cpu.reg[0] = res & 0xff
 	cpu.reg[1] = res >> 8
+	cpu.cycles++
 }
 
 func fmul(cpu *Cpu, o *instr.Operands, mem Memory) {
-	cpu.cycles++
 	res := cpu.reg[o.Dst] * cpu.reg[o.Src]
 	cpu.flags[FlagC] = res >= 0x8000
 	res = (res << 1) & 0xffff
 	cpu.flags[FlagZ] = res == 0
 	cpu.reg[0] = res & 0xff
 	cpu.reg[1] = res >> 8
+	cpu.cycles++
 }
 
 func muls(cpu *Cpu, o *instr.Operands, mem Memory) {
-	cpu.cycles++
 	d := int8(cpu.reg[o.Dst])
 	r := int8(cpu.reg[o.Src])
 	res := (int(d) * int(r)) & 0xffff
@@ -416,10 +433,10 @@ func muls(cpu *Cpu, o *instr.Operands, mem Memory) {
 	cpu.flags[FlagZ] = res == 0
 	cpu.reg[0] = res & 0xff
 	cpu.reg[1] = res >> 8
+	cpu.cycles++
 }
 
 func fmuls(cpu *Cpu, o *instr.Operands, mem Memory) {
-	cpu.cycles++
 	d := int8(cpu.reg[o.Dst])
 	r := int8(cpu.reg[o.Src])
 	res := (int(d) * int(r)) & 0xffff
@@ -428,10 +445,10 @@ func fmuls(cpu *Cpu, o *instr.Operands, mem Memory) {
 	cpu.flags[FlagZ] = res == 0
 	cpu.reg[0] = res & 0xff
 	cpu.reg[1] = res >> 8
+	cpu.cycles++
 }
 
 func mulsu(cpu *Cpu, o *instr.Operands, mem Memory) {
-	cpu.cycles++
 	d := int8(cpu.reg[o.Dst])
 	r := cpu.reg[o.Src]
 	res := (int(d) * int(r)) & 0xffff
@@ -439,10 +456,10 @@ func mulsu(cpu *Cpu, o *instr.Operands, mem Memory) {
 	cpu.flags[FlagZ] = res == 0
 	cpu.reg[0] = res & 0xff
 	cpu.reg[1] = res >> 8
+	cpu.cycles++
 }
 
 func fmulsu(cpu *Cpu, o *instr.Operands, mem Memory) {
-	cpu.cycles++
 	d := int8(cpu.reg[o.Dst])
 	r := cpu.reg[o.Src]
 	res := (int(d) * int(r)) & 0xffff
@@ -451,6 +468,7 @@ func fmulsu(cpu *Cpu, o *instr.Operands, mem Memory) {
 	cpu.flags[FlagZ] = res == 0
 	cpu.reg[0] = res & 0xff
 	cpu.reg[1] = res >> 8
+	cpu.cycles++
 }
 
 func mov(cpu *Cpu, o *instr.Operands, mem Memory) {
@@ -558,28 +576,28 @@ func bld(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func ld(cpu *Cpu, o *instr.Operands, mem Memory) {
-	// TODO tiny/xmega indirect cycles
 	addr := Addr(cpu.indirect(instr.IndexReg(o.Src), 0))
 	cpu.reg[o.Dst] = int(mem.ReadData(addr))
 }
 
 func st(cpu *Cpu, o *instr.Operands, mem Memory) {
 	addr := Addr(cpu.indirect(instr.IndexReg(o.Dst), 0))
-	// TODO: tiny/xmega indirect cycles
-	cpu.cycles = 2
 	mem.WriteData(addr, byte(cpu.reg[o.Src]))
+	if cpu.family == Mega {
+		cpu.cycles = 2
+	}
 }
 
 func ldd(cpu *Cpu, o *instr.Operands, mem Memory) {
 	addr := Addr(cpu.indirect(instr.IndexReg(o.Src), o.Off))
-	cpu.cycles = 2
 	cpu.reg[o.Dst] = int(mem.ReadData(addr))
+	cpu.cycles = 2
 }
 
 func std(cpu *Cpu, o *instr.Operands, mem Memory) {
-	cpu.cycles++
 	addr := Addr(cpu.indirect(instr.IndexReg(o.Dst), o.Off))
 	mem.WriteData(addr, byte(cpu.reg[o.Src]))
+	cpu.cycles = 2
 }
 
 func lds(cpu *Cpu, o *instr.Operands, mem Memory) {
@@ -587,14 +605,16 @@ func lds(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func sts(cpu *Cpu, o *instr.Operands, mem Memory) {
-	cpu.cycles++
 	mem.WriteData(Addr(cpu.ramp[RampD]|o.Off), byte(cpu.reg[o.Src]))
+	cpu.cycles++
 }
 
 func push(cpu *Cpu, o *instr.Operands, mem Memory) {
-	// TODO xmega -1
 	mem.WriteData(Addr(cpu.sp), byte(cpu.reg[o.Src]))
 	cpu.spInc(-1)
+	if cpu.family == Xmega {
+		cpu.cycles--
+	}
 }
 
 func pop(cpu *Cpu, o *instr.Operands, mem Memory) {
@@ -615,18 +635,18 @@ func brbc(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func eijmp(cpu *Cpu, o *instr.Operands, mem Memory) {
-	cpu.cycles++
 	cpu.pc = cpu.reg[30] | (cpu.reg[31] << 8) | cpu.ramp[Eind]
+	cpu.cycles++
 }
 
 func ijmp(cpu *Cpu, o *instr.Operands, mem Memory) {
-	cpu.cycles++
 	cpu.pc = cpu.reg[30] | (cpu.reg[31] << 8)
+	cpu.cycles++
 }
 
 func jmp(cpu *Cpu, o *instr.Operands, mem Memory) {
-	cpu.cycles++
 	cpu.pc = o.Off & (cpu.rmask[Eind] | 0xffff)
+	cpu.cycles++
 }
 
 func rjmp(cpu *Cpu, o *instr.Operands, mem Memory) {
@@ -642,22 +662,39 @@ func call(cpu *Cpu, o *instr.Operands, mem Memory) {
 func eicall(cpu *Cpu, o *instr.Operands, mem Memory) {
 	pushPC(cpu, mem)
 	eijmp(cpu, o, mem)
-	// TODO xmega -1
 	cpu.cycles--
+	if cpu.family == Xmega {
+		cpu.cycles--
+	}
 }
 
 func icall(cpu *Cpu, o *instr.Operands, mem Memory) {
-	// TODO xmega -1
 	pushPC(cpu, mem)
 	ijmp(cpu, o, mem)
 	cpu.cycles--
+	if cpu.family == Xmega {
+		cpu.cycles--
+	}
 }
 
 func rcall(cpu *Cpu, o *instr.Operands, mem Memory) {
-	// TODO xmega -1, tiny always 4
 	pushPC(cpu, mem)
 	rjmp(cpu, o, mem)
-	cpu.cycles--
+	switch cpu.family {
+	case Mega:
+		cpu.cycles--
+	case Xmega:
+		cpu.cycles -= 2
+	case Tiny:
+		cpu.cycles = 4
+	}
+	// if cpu.xmega {
+	// 	cpu.cycles -= 2
+	// } else if cpu.tiny {
+	// 	cpu.cycles = 4
+	// } else {
+	// 	cpu.cycles--
+	// }
 }
 
 func pushPC(cpu *Cpu, mem Memory) {
@@ -698,6 +735,7 @@ func lac(cpu *Cpu, o *instr.Operands, mem Memory) {
 	addr := Addr(cpu.indirect(instr.Z, 0))
 	cpu.reg[o.Dst] = int(mem.ReadData(addr))
 	mem.WriteData(addr, byte(cpu.reg[o.Dst]) & ^mask)
+	cpu.cycles = 1
 }
 
 func las(cpu *Cpu, o *instr.Operands, mem Memory) {
@@ -705,6 +743,7 @@ func las(cpu *Cpu, o *instr.Operands, mem Memory) {
 	addr := Addr(cpu.indirect(instr.Z, 0))
 	cpu.reg[o.Dst] = int(mem.ReadData(addr))
 	mem.WriteData(addr, byte(cpu.reg[o.Dst])|mask)
+	cpu.cycles = 1
 }
 
 func lat(cpu *Cpu, o *instr.Operands, mem Memory) {
@@ -712,6 +751,7 @@ func lat(cpu *Cpu, o *instr.Operands, mem Memory) {
 	addr := Addr(cpu.indirect(instr.Z, 0))
 	cpu.reg[o.Dst] = int(mem.ReadData(addr))
 	mem.WriteData(addr, byte(cpu.reg[o.Dst])^mask)
+	cpu.cycles = 1
 }
 
 func xch(cpu *Cpu, o *instr.Operands, mem Memory) {
@@ -719,6 +759,7 @@ func xch(cpu *Cpu, o *instr.Operands, mem Memory) {
 	addr := Addr(cpu.indirect(instr.Z, 0))
 	cpu.reg[o.Dst] = int(mem.ReadData(addr))
 	mem.WriteData(addr, tmp)
+	cpu.cycles = 1
 }
 
 func sbrc(cpu *Cpu, o *instr.Operands, mem Memory) {
@@ -760,19 +801,21 @@ func out(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func cbi(cpu *Cpu, o *instr.Operands, mem Memory) {
-	// TODO tiny/xmega - 1
-	cpu.cycles++
 	addr := Addr(o.Dst + 0x20)
 	val := mem.ReadData(addr) & ^(1 << uint(o.Off))
 	mem.WriteData(addr, val)
+	if cpu.family == Mega {
+		cpu.cycles++
+	}
 }
 
 func sbi(cpu *Cpu, o *instr.Operands, mem Memory) {
-	// TODO tiny/xmega -1
-	cpu.cycles++
 	addr := Addr(o.Dst + 0x20)
 	val := mem.ReadData(addr) | (1 << uint(o.Off))
 	mem.WriteData(addr, val)
+	if cpu.family == Mega {
+		cpu.cycles++
+	}
 }
 
 func lpm(cpu *Cpu, o *instr.Operands, mem Memory) {
@@ -796,7 +839,6 @@ func elpme(cpu *Cpu, o *instr.Operands, mem Memory) {
 }
 
 func loadProgMem(cpu *Cpu, o *instr.Operands, mem Memory, noramp bool) {
-	cpu.cycles += 2
 	var tmpMask, tmpRamp int
 	if noramp {
 		tmpMask = cpu.rmask[RampZ]
@@ -809,6 +851,7 @@ func loadProgMem(cpu *Cpu, o *instr.Operands, mem Memory, noramp bool) {
 		cpu.rmask[RampZ] = tmpMask
 		cpu.ramp[RampZ] = tmpRamp
 	}
+	cpu.cycles = 3
 }
 
 type opFunc func(*Cpu, *instr.Operands, Memory)
