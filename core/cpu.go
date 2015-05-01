@@ -15,6 +15,16 @@ type Cpu struct {
 	family Family
 }
 
+func NewCpu(family Family, dmask, xmask, ymask, zmask, emask byte) *Cpu {
+	c := &Cpu{family: family}
+	c.setRmask(RampD, dmask)
+	c.setRmask(RampX, xmask)
+	c.setRmask(RampY, ymask)
+	c.setRmask(RampZ, zmask)
+	c.setRmask(Eind, emask)
+	return c
+}
+
 type Flag int
 
 const (
