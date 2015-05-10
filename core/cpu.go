@@ -616,7 +616,6 @@ func lds(cpu *Cpu, o *instr.Operands, mem Memory) {
 
 func sts(cpu *Cpu, o *instr.Operands, mem Memory) {
 	mem.WriteData(Addr(cpu.ramp[RampD]|o.Off), byte(cpu.reg[o.Src]))
-	cpu.cycles++
 }
 
 func push(cpu *Cpu, o *instr.Operands, mem Memory) {
