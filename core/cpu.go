@@ -94,8 +94,16 @@ func (c *Cpu) GetReg(r int) byte {
 	return byte(c.reg[r])
 }
 
+func (c *Cpu) MemReadReg(addr Addr) byte {
+	return c.GetReg(int(addr))
+}
+
 func (c *Cpu) SetReg(r int, val byte) {
 	c.reg[r] = int(val)
+}
+
+func (c *Cpu) MemWriteReg(addr Addr, val byte) {
+	c.SetReg(int(addr), val)
 }
 
 func (c *Cpu) GetFlag(f Flag) bool {
@@ -115,6 +123,10 @@ func (c *Cpu) SregFromByte(b byte) {
 	c.flags[FlagH] = (b & 0x20) != 0
 	c.flags[FlagT] = (b & 0x40) != 0
 	c.flags[FlagI] = (b & 0x80) != 0
+}
+
+func (c *Cpu) MemWriteSreg(addr Addr, val byte) {
+	c.SregFromByte(val)
 }
 
 func (c *Cpu) ByteFromSreg() (b byte) {
@@ -145,6 +157,10 @@ func (c *Cpu) ByteFromSreg() (b byte) {
 	return
 }
 
+func (c *Cpu) MemReadSreg(addr Addr) byte {
+	return c.ByteFromSreg()
+}
+
 func (c *Cpu) SetRamp(reg Ramp, val byte) {
 	c.ramp[reg] = (int(val) << 16) & c.rmask[reg]
 }
@@ -165,8 +181,16 @@ func (c *Cpu) GetSPL() byte {
 	return byte(c.sp & 0xff)
 }
 
+func (c *Cpu) MemReadSPL(addr Addr) byte {
+	return c.GetSPL()
+}
+
 func (c *Cpu) GetSPH() byte {
 	return byte(c.sp >> 8)
+}
+
+func (c *Cpu) MemReadSPH(addr Addr) byte {
+	return c.GetSPH()
 }
 
 func (c *Cpu) SetSP(sp uint16) {
@@ -177,8 +201,16 @@ func (c *Cpu) SetSPL(spl byte) {
 	c.sp = (c.sp & 0xff00) | int(spl)
 }
 
+func (c *Cpu) MemWriteSPL(addr Addr, val byte) {
+	c.SetSPL(val)
+}
+
 func (c *Cpu) SetSPH(sph byte) {
 	c.sp = (c.sp & 0xff) | int(sph)<<8
+}
+
+func (c *Cpu) MemWriteSPH(addr Addr, val byte) {
+	c.SetSPH(val)
 }
 
 func (c *Cpu) GetPC() int {
