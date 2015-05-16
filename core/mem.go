@@ -8,3 +8,6 @@ type Memory interface {
 	ReadProgram(Addr) uint16
 	LoadProgram(Addr) byte
 }
+
+type MemRead func(Addr) byte
+type MemWrite func(Addr, byte)
