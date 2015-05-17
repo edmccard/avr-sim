@@ -14,11 +14,12 @@ type Speaker struct {
 	avgIdx       int
 	cycPerSample uint
 	pin          byte
+	mask         byte
 	lastToggle   int64
 	started      bool
 }
 
-func NewSpeaker(timer *core.Timer, hertz uint) (*Speaker, error) {
+func NewSpeaker(timer *core.Timer, hertz uint, pin int) (*Speaker, error) {
 	spk := &Speaker{curSample: -1.0}
 	host, err := portaudio.DefaultHostApi()
 	if err != nil {
@@ -35,6 +36,7 @@ func NewSpeaker(timer *core.Timer, hertz uint) (*Speaker, error) {
 	spk.cycPerSample = hertz / uint(parameters.SampleRate)
 	spk.channel = make(chan float32, 8192)
 	spk.avgBuf = make([]float32, spk.cycPerSample)
+	spk.mask = 1 << uint(pin)
 	spk.stream = stream
 	return spk, nil
 }
@@ -67,7 +69,7 @@ func (spk *Speaker) Callback(out []float32) {
 }
 
 func (spk *Speaker) Write(addr core.Addr, val byte) {
-	val &= 1
+	val &= spk.mask
 	if val == spk.pin {
 		return
 	}
