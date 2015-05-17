@@ -62,6 +62,11 @@ func (mem *Mem) SetReader(addr core.Addr, f core.MemRead) {
 	mem.inports[addr] = f
 }
 
+func (mem *Mem) SetRW(addr core.Addr, r core.MemRead, w core.MemWrite) {
+	mem.SetReader(addr, r)
+	mem.SetWriter(addr, w)
+}
+
 func (mem *Mem) ReadData(addr core.Addr) byte {
 	addr %= SramBytes
 	if addr < PortCount {
