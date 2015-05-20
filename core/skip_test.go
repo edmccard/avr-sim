@@ -1,8 +1,9 @@
 package core
 
 import (
-	it "github.com/edmccard/avr-sim/instr"
 	"testing"
+
+	it "github.com/edmccard/avr-sim/instr"
 )
 
 func TestSkip(t *testing.T) {

@@ -2,8 +2,9 @@ package core
 
 import (
 	"fmt"
-	it "github.com/edmccard/avr-sim/instr"
 	"testing"
+
+	it "github.com/edmccard/avr-sim/instr"
 )
 
 func TestAlu(t *testing.T) {

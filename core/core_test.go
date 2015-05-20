@@ -2,9 +2,10 @@ package core
 
 import (
 	"fmt"
-	it "github.com/edmccard/avr-sim/instr"
 	"reflect"
 	"testing"
+
+	it "github.com/edmccard/avr-sim/instr"
 )
 
 type key int
