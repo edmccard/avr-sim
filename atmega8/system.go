@@ -26,7 +26,7 @@ func NewSystem() *System {
 		Cpu:     cpu,
 		Decoder: &decoder,
 		Memory:  NewMem(cpu),
-		Timer:   &core.Timer{},
+		Timer:   core.NewTimer(),
 	}
 }
 
