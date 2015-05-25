@@ -9,23 +9,27 @@ type Timer struct {
 }
 
 func NewTimer() *Timer {
-	return &Timer{fuse: math.MaxInt64}
+	timer := &Timer{}
+	timer.AddCounter(NewCounter(math.MaxInt64, nil))
+	return timer
 }
 
 func (t *Timer) Tick(cycles int64) {
-	t.cycleCount += cycles
 	for cycles >= t.fuse {
 		cycles -= t.fuse
+		t.cycleCount += t.fuse
 		ctr := t.counters
 		if ctr.fire() {
+			t.counters = t.counters.next
 			t.AddCounter(ctr)
 		} else {
 			ctr = ctr.next
-			t.fuse = ctr.rem
+			t.fuse = ctr.end - t.cycleCount
 			t.counters = ctr
 		}
 	}
 	t.fuse -= cycles
+	t.cycleCount += cycles
 }
 
 func (t *Timer) GetCount() int64 {
@@ -36,8 +40,8 @@ func (t *Timer) AddCounter(ctr *Counter) {
 	if ctr.len == 0 {
 		panic("zero-length counter")
 	}
-	ctr.rem = ctr.len
 	ctr.end = ctr.len + t.cycleCount
+	ctr.next = nil
 	t.insertCounter(ctr)
 }
 
@@ -51,19 +55,18 @@ func (t *Timer) insertCounter(ctr *Counter) {
 		prev = next
 	}
 	if prev == nil {
-		t.fuse = ctr.rem
 		ctr.next = t.counters
 		t.counters = ctr
 	} else {
 		ctr.next = next
 		prev.next = ctr
 	}
+	t.fuse = t.counters.end - t.cycleCount
 }
 
 type Counter struct {
 	next *Counter
 	end  int64
-	rem  int64
 	len  int64
 	fire func() bool
 }
